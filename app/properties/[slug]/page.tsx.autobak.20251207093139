@@ -1,0 +1,139 @@
+﻿/* app/properties/[slug]/page.tsx */
+import React from "react";
+import Link from "next/link";
+import dynamic from "next/dynamic";
+import propertiesJson from "@/data/properties.json";
+
+const PropertyGallery = dynamic(() => import("../../../components/PropertyGallery"), { ssr: false });
+
+type Props = { params: { slug?: string } };
+
+type Property = {
+  id?: string;
+  slug?: string;
+  title?: string;
+  price?: number;
+  priceDisplay?: string;
+  location?: { city?: string; area?: string };
+  images?: string[];
+  areaText?: string;
+  beds?: number;
+  highlights?: string[];
+  description?: string;
+};
+
+export default async function PropertyPage({ params }: Props) {
+  const slug = params?.slug as string | undefined;
+
+  if (!slug) {
+    return (
+      <div className="p-8">
+        <h2 className="text-xl font-semibold">Invalid property</h2>
+        <p className="mt-2">
+          No slug provided. <Link href="/properties" className="text-[var(--color-brand-gold)]">Back to listings</Link>
+        </p>
+      </div>
+    );
+  }
+
+  const items = Array.isArray((propertiesJson as any).items) ? (propertiesJson as any).items : propertiesJson;
+  const prop: Property | undefined = items.find((p: any) => p.slug === slug) || items[0];
+
+  if (!prop) {
+    return (
+      <div className="p-8 max-w-5xl mx-auto">
+        <h1 className="text-2xl font-semibold mb-4">Property Not Found</h1>
+        <p className="text-sm text-neutral-600 mb-4">No matching property found for <strong>{slug}</strong>.</p>
+        <p className="mt-6"><Link href="/properties" className="text-[var(--color-brand-gold)]">← Back to listings</Link></p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="px-6 md:px-12 py-8 max-w-7xl mx-auto">
+      <div className="mb-6">
+        <Link href="/properties" className="text-sm text-neutral-600 hover:text-neutral-900">← Back</Link>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2">
+          <div className="rounded-2xl overflow-hidden shadow-lg">
+            <PropertyGallery images={prop.images ?? ["/properties/placeholder.jpg"]} />
+          </div>
+        </div>
+
+        <aside className="lg:col-span-1">
+          <div className="p-6 rounded-2xl border border-black/6 bg-white/80 shadow-sm sticky top-24">
+            <h1 className="text-2xl md:text-3xl font-playfair font-semibold mb-1">{prop.title}</h1>
+            <p className="text-sm text-neutral-600 mb-4">{prop.location?.area}{prop.location?.city ? `, ${prop.location.city}` : ""}</p>
+
+            <div className="mb-4">
+              <div className="text-sm text-neutral-500">Price</div>
+              <div className="text-xl font-semibold text-[rgba(12,12,12,0.95)]">
+                {prop.priceDisplay ?? (prop.price ? `₹${Number(prop.price).toLocaleString()}` : "Contact")}
+              </div>
+            </div>
+
+            {prop.areaText && (
+              <div className="mb-4">
+                <div className="text-sm text-neutral-500">Area</div>
+                <div className="text-base">{prop.areaText}</div>
+              </div>
+            )}
+
+            {prop.beds && (
+              <div className="mb-4">
+                <div className="text-sm text-neutral-500">Configuration</div>
+                <div className="text-base">{prop.beds} beds</div>
+              </div>
+            )}
+
+            {prop.highlights && prop.highlights.length > 0 && (
+              <div className="mb-4">
+                <div className="text-sm text-neutral-500 mb-2">Highlights</div>
+                <ul className="text-sm space-y-1">
+                  {prop.highlights.map((h, i) => (
+                    <li key={i} className="flex items-start gap-3">
+                      <span className="inline-block w-2 h-2 rounded-full bg-[var(--color-brand-gold)] mt-2" />
+                      <span className="text-neutral-700">{h}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <div className="mt-6 flex gap-3">
+              <a href={`tel:+919999999999`} className="flex-1 inline-flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-[var(--color-brand-gold)] text-black font-medium shadow">
+                Enquire Now
+              </a>
+              <Link href="/contact" className="flex-1 inline-flex items-center justify-center gap-2 py-3 px-4 rounded-xl border border-neutral-200 text-neutral-800">
+                Contact
+              </Link>
+            </div>
+
+            <div className="mt-4 text-xs text-neutral-500">
+              Listed ID: <span className="text-neutral-700">{prop.id ?? "—"}</span>
+            </div>
+          </div>
+        </aside>
+      </div>
+
+      <div className="mt-10 max-w-4xl">
+        <h2 className="text-xl font-semibold mb-3">Project Details</h2>
+        {prop.areaText && <p className="text-neutral-700 mb-2">{prop.areaText}</p>}
+        {prop.description && <p className="text-neutral-700 mb-2">{prop.description}</p>}
+
+        {prop.highlights && (
+          <div className="mt-4">
+            <h3 className="font-medium mb-2">Features</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {prop.highlights.map((h, i) => (
+                <div key={i} className="text-sm text-neutral-700">• {h}</div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

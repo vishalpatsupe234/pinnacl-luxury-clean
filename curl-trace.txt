@@ -1,0 +1,9 @@
+00:30:30.974000 == Info: Host localhost:3000 was resolved.
+00:30:30.978000 == Info: IPv6: ::1
+00:30:30.978000 == Info: IPv4: 127.0.0.1
+00:30:30.979000 == Info:   Trying [::1]:3000...
+00:30:31.195000 == Info:   Trying 127.0.0.1:3000...
+00:30:33.013000 == Info: connect to ::1 port 3000 from :: port 64665 failed: Connection refused
+00:30:33.223000 == Info: connect to 127.0.0.1 port 3000 from 0.0.0.0 port 64666 failed: Connection refused
+00:30:33.223000 == Info: Failed to connect to localhost port 3000 after 2272 ms: Could not connect to server
+00:30:33.223000 == Info: closing connection #0

@@ -1,0 +1,35 @@
+// app/api/properties/route.ts
+import { PROPERTIES } from "@/lib/properties";
+
+export async function GET(req: Request) {
+  try {
+    const url = new URL(req.url);
+    const searchParams = url.searchParams;
+
+    const type = (searchParams.get("type") || "").trim();
+    const loc = (searchParams.get("loc") || "").trim();
+    const min = Number(searchParams.get("min") || 0);
+    const max = Number(searchParams.get("max") || 0);
+
+    let items = Array.isArray(PROPERTIES) ? PROPERTIES.slice() : [];
+
+    if (type) items = items.filter((p: any) => String(p.type) === type);
+
+    if (loc) {
+      const q = loc.toLowerCase();
+      items = items.filter((p: any) => {
+        const area = (p.location?.area || "").toLowerCase();
+        const city = (p.location?.city || "").toLowerCase();
+        return area.includes(q) || city.includes(q);
+      });
+    }
+
+    if (min > 0) items = items.filter((p: any) => Number(p.price) >= min);
+    if (max > 0) items = items.filter((p: any) => Number(p.price) <= max);
+
+    return Response.json({ items }, { status: 200 });
+  } catch (err) {
+    console.error("api/properties error:", err);
+    return Response.json({ items: [] }, { status: 500 });
+  }
+}
