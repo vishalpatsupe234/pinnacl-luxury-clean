@@ -1,10 +1,31 @@
-﻿import PropertyDetails from "@/components/PropertyDetails";
+import PropertyDetails from "@/components/PropertyDetails";
+import type { Metadata } from "next";
 
-export default async function PropertySlugPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
+type Props = {
+  params: Promise<{
+    slug: string;
+  }>;
+};
+
+/* ---------------- SEO META ---------------- */
+export async function generateMetadata(
+  { params }: Props
+): Promise<Metadata> {
+  const { slug } = await params;
+
+  const projectName = slug
+    .split("-")
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+
+  return {
+    title: `${projectName} | Pinnacl Properties`,
+    description: `${projectName} — a RERA-verified luxury residential project with transparent advisory and long-term value.`,
+  };
+}
+
+/* ---------------- PAGE ---------------- */
+export default async function Page({ params }: Props) {
   const { slug } = await params;
 
   const base =
@@ -14,6 +35,10 @@ export default async function PropertySlugPage({
     `${base}/api/properties?slug=${slug}`,
     { cache: "no-store" }
   );
+
+  if (!res.ok) {
+    throw new Error("Failed to fetch property");
+  }
 
   const data = await res.json();
 

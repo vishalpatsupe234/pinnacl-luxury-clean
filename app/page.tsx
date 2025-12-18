@@ -2,6 +2,12 @@
 
 import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
+export const metadata = {
+  title: "Luxury Homes in Mumbai",
+  description:
+    "Discover handpicked luxury residential projects in Mumbai — RERA-verified, thoughtfully curated for lifestyle, legal clarity, and long-term value.",
+};
+
 
 // Original sections
 import FeaturedProperties from "@/components/FeaturedProperties";

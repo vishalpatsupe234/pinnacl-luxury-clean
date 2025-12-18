@@ -1,3 +1,10 @@
+export const metadata = {
+  title: "Contact Pinnacl Properties",
+  description:
+    "Connect with Pinnacl Properties for guidance on luxury residential projects across Mumbai and premium locations.",
+};
+
+
 export default function ContactPage() {
   return (
     <main className="max-w-xl mx-auto px-6 py-24">

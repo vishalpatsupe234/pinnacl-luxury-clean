@@ -1,16 +1,20 @@
-﻿import PropertiesList from "@/components/PropertiesList";
+﻿// app/properties/page.tsx
 
-export default async function PropertiesPage() {
-  const base =
-    process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+import PropertiesList from "@/components/PropertiesList";
 
-  const res = await fetch(`${base}/api/properties`, {
-    cache: "no-store",
-  });
+/* ---------------------------
+   STATIC METADATA (SAFE)
+---------------------------- */
+export const metadata = {
+  title: "Luxury Residential Projects | Pinnacl Properties",
+  description:
+    "Explore premium residential projects across Mumbai — featuring RERA-verified developers, prime locations, and long-term value.",
+};
 
-  const data = await res.json();
-  const items = Array.isArray(data) ? data : data?.items ?? [];
-
+/* ---------------------------
+   PAGE (NO params, NO async)
+---------------------------- */
+export default function PropertiesPage() {
   return (
     <main className="min-h-screen bg-[var(--color-brand-bg)]">
       <section className="section-shell py-12">
@@ -18,7 +22,7 @@ export default async function PropertiesPage() {
           Properties
         </h1>
 
-        <PropertiesList initialItems={items} />
+        <PropertiesList />
       </section>
     </main>
   );
