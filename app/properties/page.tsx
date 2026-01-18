@@ -1,29 +1,22 @@
-﻿// app/properties/page.tsx
+﻿import PropertiesClient from "@/components/PropertiesClient";
 
-import PropertiesList from "@/components/PropertiesList";
+export const dynamic = "force-dynamic";
 
-/* ---------------------------
-   STATIC METADATA (SAFE)
----------------------------- */
-export const metadata = {
-  title: "Luxury Residential Projects | Pinnacl Properties",
-  description:
-    "Explore premium residential projects across Mumbai — featuring RERA-verified developers, prime locations, and long-term value.",
-};
+export default async function PropertiesPage() {
+  const base =
+    process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
-/* ---------------------------
-   PAGE (NO params, NO async)
----------------------------- */
-export default function PropertiesPage() {
+  const res = await fetch(`${base}/api/properties`, {
+    cache: "no-store",
+  });
+
+  const data = await res.json();
+  const items = Array.isArray(data) ? data : data?.items ?? [];
+
   return (
-    <main className="min-h-screen bg-[var(--color-brand-bg)]">
-      <section className="section-shell py-12">
-        <h1 className="text-2xl md:text-3xl font-playfair mb-4">
-          Properties
-        </h1>
-
-        <PropertiesList />
-      </section>
-    </main>
+    <section className="container mx-auto px-4 py-10">
+      <h1 className="text-3xl font-bold mb-6">Properties</h1>
+      <PropertiesClient initialItems={items} />
+    </section>
   );
 }
