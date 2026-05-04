@@ -1,0 +1,7 @@
+[00:00:04.486] Server  LOG     ✓ Ready in 3.3s
+[00:01:57.820] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:01:58.985] Browser WARN    Image with src "/properties/crest.jpg" has "fill" but is missing "sizes" prop. Please add it to improve page performance. Read more: https://nextjs.org/docs/api-reference/next/image#sizes
+[00:01:58.985] Browser WARN    Image with src "/properties/aurelia.jpg" has "fill" but is missing "sizes" prop. Please add it to improve page performance. Read more: https://nextjs.org/docs/api-reference/next/image#sizes
+[00:01:58.985] Browser WARN    Image with src "/properties/bayview.jpg" has "fill" but is missing "sizes" prop. Please add it to improve page performance. Read more: https://nextjs.org/docs/api-reference/next/image#sizes
+[00:01:58.985] Browser WARN    Image with src "/about-1.jpg" has "fill" but is missing "sizes" prop. Please add it to improve page performance. Read more: https://nextjs.org/docs/api-reference/next/image#sizes
+[00:03:38.870] Server  LOG     ✓ Compiled in 527ms

@@ -1,0 +1,3 @@
+module.exports=[35741,a=>{"use strict";var b=a.i(7997);function c(){return(0,b.jsxs)("div",{className:"max-w-6xl mx-auto px-6 py-20 animate-pulse",children:[(0,b.jsx)("div",{className:"h-8 w-1/2 bg-gray-200 mb-4 rounded"}),(0,b.jsx)("div",{className:"h-4 w-2/3 bg-gray-200 mb-12 rounded"}),(0,b.jsx)("div",{className:"grid grid-cols-1 md:grid-cols-3 gap-10",children:[1,2,3].map(a=>(0,b.jsxs)("div",{children:[(0,b.jsx)("div",{className:"aspect-[4/3] bg-gray-200 rounded-lg mb-4"}),(0,b.jsx)("div",{className:"h-4 bg-gray-200 w-3/4 rounded mb-2"}),(0,b.jsx)("div",{className:"h-3 bg-gray-200 w-1/2 rounded"})]},a))})]})}a.s(["default",()=>c])}];
+
+//# sourceMappingURL=app_locations_%5Blocation%5D_loading_tsx_ae0633e0._.js.map

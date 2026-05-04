@@ -1,4 +1,12 @@
 {
+  "/_global-error/page": "app/_global-error/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/leads/route": "app/api/leads/route.js",
+  "/api/properties/route": "app/api/properties/route.js",
+  "/contact/page": "app/contact/page.js",
   "/favicon.ico/route": "app/favicon.ico/route.js",
-  "/page": "app/page.js"
+  "/locations/[location]/page": "app/locations/[location]/page.js",
+  "/page": "app/page.js",
+  "/properties/[slug]/page": "app/properties/[slug]/page.js",
+  "/properties/page": "app/properties/page.js"
 }

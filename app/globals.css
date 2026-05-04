@@ -43,19 +43,52 @@
    BASE
 ======================= */
 @layer base {
-  html { scroll-behavior: smooth; }
+  html {
+    scroll-behavior: smooth;
+  }
 
   body {
     background: var(--background);
     color: var(--foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    margin: 0;
   }
 
   h1, h2, h3 {
     font-weight: 500;
     letter-spacing: -0.03em;
   }
+
+  video {
+    display: block;
+  }
+}
+
+/* =======================
+   HERO BACKGROUND VIDEO (FIXED)
+======================= */
+.hero-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0; /* 🔥 FIXED */
+  background: black;
+}
+
+/* Dark overlay above video */
+.hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(0,0,0,0.55) 0%,
+    rgba(0,0,0,0.45) 40%,
+    rgba(0,0,0,0.65) 100%
+  );
+  z-index: 1;
 }
 
 /* =======================
@@ -96,10 +129,9 @@
 
   .brand-body {
     @apply text-sm md:text-base;
-    color: var(--color-brand-muted);
+    color: #d1d1d1; /* 🔥 FIXED (visible on dark bg) */
   }
 
-  /* PRIMARY HERO BUTTON (single source) */
   .btn-primary-hero {
     @apply inline-flex items-center justify-center rounded-full px-8 py-3.5 text-sm md:text-base font-semibold;
     background: linear-gradient(180deg, #f6e6bf, #c9a66a);
@@ -141,26 +173,6 @@ header .backdrop-blur-xl {
   border-bottom: 1px solid rgba(255,255,255,0.05);
 }
 
-.nav-link {
-  position: relative;
-}
-
-.nav-underline {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -6px;
-  height: 2px;
-  background: var(--color-brand-gold);
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform .25s ease;
-}
-
-.nav-link:hover .nav-underline {
-  transform: scaleX(1);
-}
-
 /* =======================
    PROPERTY CARD – ULTRA LUX
 ======================= */
@@ -178,36 +190,10 @@ header .backdrop-blur-xl {
   box-shadow: 0 26px 60px rgba(0,0,0,0.14);
 }
 
-.property-card-lux .img-wrap {
-  height: 200px;
-  overflow: hidden;
-}
-
 .property-card-lux img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform .6s ease;
-}
-
-.property-card-lux:hover img {
-  transform: scale(1.05);
-}
-
-.property-card-lux .card-body {
-  padding: 18px 20px;
-}
-
-.property-card-lux h4 {
-  font-family: "Playfair Display", serif;
-  font-size: 1.25rem;
-  margin-bottom: 6px;
-  color: #111827;
-}
-
-.property-card-lux .location {
-  font-size: 0.875rem;
-  color: #6f6f6f;
 }
 
 /* =======================
@@ -218,12 +204,4 @@ header .backdrop-blur-xl {
     animation: none !important;
     transition: none !important;
   }
-}
-/* =======================
-   HERO BACKGROUND VIDEO
-======================= */
-.hero-video {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
 }

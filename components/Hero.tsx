@@ -1,57 +1,40 @@
-﻿import Link from "next/link";
-import LuxurySearchBar from "./LuxurySearchBar";
-
-export default function Hero() {
+﻿export default function Hero() {
   return (
-    <section className="relative min-h-screen flex items-center overflow-hidden">
+    <section className="relative h-screen overflow-hidden">
       
-      {/* BACKGROUND VIDEO */}
-      <div className="absolute inset-0 -z-10">
-       <video
-  autoPlay
-  muted
-  loop
-  playsInline
-  preload="auto"
-  poster="/hero.jpg"
-  className="hero-video"
->
-  <source src="/videos/hero.mp4" type="video/mp4" />
-</video>
+      {/* Background Video */}
+      <video
+        autoPlay
+        muted
+        loop
+        playsInline
+        preload="auto"
+        className="hero-video"
+      >
+        <source src="/videos/hero.mp4" type="video/mp4" />
+      </video>
 
+      {/* Dark Overlay */}
+      <div className="hero-overlay" />
 
-        {/* Dark luxury overlay */}
-        <div className="absolute inset-0 bg-black/45" />
-      </div>
-
-      {/* CONTENT */}
-      <div className="section-shell pt-32 pb-24 w-full">
-        <div className="max-w-4xl mx-auto text-center">
-          
-          <span className="brand-logo mb-6 block">
-            Pinnacl Private Advisory
+      {/* Hero Content */}
+      <div className="relative z-10 h-full flex items-center justify-center text-center px-4">
+        <div>
+          <span className="brand-logo block mb-6">
+            PINNACL PRIVATE ADVISORY
           </span>
 
-          <h1 className="brand-heading font-playfair mb-6">
+          <h1 className="brand-heading mb-6">
             Where Every Home <br /> Reflects You
           </h1>
 
-          <p className="brand-body mb-10 max-w-2xl mx-auto">
+          <p className="brand-body max-w-2xl mx-auto mb-10">
             Handpicked residences — curated for lifestyle, comfort,
             legal clarity, and long-term value.
           </p>
-
-          <div className="flex justify-center">
-            <LuxurySearchBar />
-          </div>
-
-          <div className="mt-8 flex justify-center gap-6 text-xs text-white/80">
-            <span>✓ RERA Verified</span>
-            <span>✓ Trusted by 500+ Families</span>
-          </div>
-
         </div>
       </div>
+
     </section>
   );
 }
