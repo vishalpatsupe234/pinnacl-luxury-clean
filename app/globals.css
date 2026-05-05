@@ -68,17 +68,17 @@
 /* =======================
    HERO BACKGROUND VIDEO (FIXED)
 ======================= */
+/* HERO VIDEO */
 .hero-video {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  z-index: 0; /* 🔥 FIXED */
-  background: black;
+  z-index: 0; /* FIXED */
 }
 
-/* Dark overlay above video */
+/* OVERLAY */
 .hero-overlay {
   position: absolute;
   inset: 0;
@@ -90,7 +90,6 @@
   );
   z-index: 1;
 }
-
 /* =======================
    ANIMATION (HERO)
 ======================= */
