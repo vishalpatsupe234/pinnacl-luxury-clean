@@ -1,4 +1,6 @@
-﻿export default function Hero() {
+﻿"use client";
+
+export default function Hero() {
   return (
     <section className="relative h-screen overflow-hidden">
 
