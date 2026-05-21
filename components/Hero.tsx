@@ -1,10 +1,10 @@
-﻿```tsx
+﻿```tsx id="e5r2c9"
 "use client";
 
 export default function Hero() {
   return (
     <section className="relative h-screen overflow-hidden">
-
+      
       {/* VIDEO */}
       <video
         autoPlay
@@ -20,7 +20,7 @@ export default function Hero() {
         <source src="/videos/hero.mp4" type="video/mp4" />
       </video>
 
-      {/* DARK OVERLAY */}
+      {/* OVERLAY */}
       <div className="absolute inset-0 bg-black/50 z-[1]" />
 
       {/* CONTENT */}
