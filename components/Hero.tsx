@@ -1,5 +1,4 @@
-﻿```tsx id="e5r2c9"
-"use client";
+﻿"use client";
 
 export default function Hero() {
   return (
@@ -21,22 +20,22 @@ export default function Hero() {
       </video>
 
       {/* OVERLAY */}
-      <div className="absolute inset-0 bg-black/50 z-[1]" />
+      <div className="absolute inset-0 bg-black/50" />
 
       {/* CONTENT */}
       <div className="relative z-10 h-full flex items-center justify-center text-center px-6">
         <div className="max-w-3xl animate-fade-in">
 
-          <span className="brand-logo mb-6 block text-[#C8A96B] tracking-[4px]">
+          <span className="brand-logo mb-6 block">
             PINNACL PRIVATE ADVISORY
           </span>
 
-          <h1 className="brand-heading mb-6 text-white">
+          <h1 className="brand-heading mb-6">
             Where Every Home <br />
             Reflects You
           </h1>
 
-          <p className="brand-body mb-10 text-gray-200">
+          <p className="brand-body mb-10">
             Handpicked residences — curated for lifestyle & comfort
           </p>
 
@@ -46,4 +45,3 @@ export default function Hero() {
     </section>
   );
 }
-```
