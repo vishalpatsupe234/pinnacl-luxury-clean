@@ -10,6 +10,9 @@
         playsInline
         preload="auto"
         className="absolute inset-0 w-full h-full object-cover"
+        ref={(video) => {
+          if (video) video.playbackRate = 0.6;
+        }}
       >
         <source src="/videos/hero.mp4" type="video/mp4" />
       </video>
