@@ -11,7 +11,7 @@
         preload="auto"
         className="absolute inset-0 w-full h-full object-cover"
         ref={(video) => {
-          if (video) video.playbackRate = 0.6;
+          if (video) video.playbackRate = 0.1;
         }}
       >
         <source src="/videos/hero.mp4" type="video/mp4" />
@@ -34,8 +34,7 @@
           </h1>
 
           <p className="brand-body mb-10">
-            Handpicked residences — curated for lifestyle, comfort,
-            legal clarity, and long-term value.
+            Handpicked residences — curated for lifestyle & comfort
           </p>
 
         </div>
