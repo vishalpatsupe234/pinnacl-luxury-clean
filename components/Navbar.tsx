@@ -1,6 +1,5 @@
-﻿"use client";
-// components/Navbar.tsx
 "use client";
+
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -10,7 +9,7 @@ export default function Navbar() {
 
   useEffect(() => {
     function onScroll() {
-      setScrolled(window.scrollY > 40);
+      setScrolled(window.scrollY > 32);
     }
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -18,83 +17,65 @@ export default function Navbar() {
   }, []);
 
   const navItems = [
-    { href: "/", label: "HOME" },
-    { href: "/projects", label: "PROJECTS" },
-    { href: "/about", label: "ABOUT" },
-    { href: "/blog", label: "BLOG" },
-    { href: "/contact", label: "CONTACT" },
+    { href: "#residences", label: "Residences" },
+    { href: "#collection", label: "Collection" },
+    { href: "#about", label: "Philosophy" },
+    { href: "#contact", label: "Contact" },
   ];
 
   return (
     <header
-      className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${
+      className={`fixed inset-x-0 top-0 z-50 transition-all duration-500 ${
         scrolled
-          ? "backdrop-blur-sm bg-white/80 border-b border-black/5 scrolled-shadow"
-          : "backdrop-blur-xl bg-black/30 border-b border-white/10"
+          ? "bg-background/80 backdrop-blur-xl border-b border-border"
+          : "bg-transparent border-b border-transparent"
       }`}
     >
-      <div className="max-w-7xl mx-auto px-6">
+      <div className="container-lux">
         <nav className="flex items-center justify-between h-20 md:h-24">
-          {/* Logo (stacked). Text color toggles with scrolled state */}
+          {/* Logo */}
           <Link href="/" className="flex flex-col leading-none select-none">
-            <span
-              className={`font-playfair text-xl md:text-2xl tracking-widest font-semibold transition-colors duration-300 ${
-                scrolled ? "text-black" : "text-white"
-              }`}
-            >
+            <span className="font-serif text-xl md:text-2xl tracking-[0.18em] font-semibold text-foreground">
               PINNACL
             </span>
-
-            <span
-              className={`text-xs md:text-sm tracking-wider mt-1 transition-colors duration-300 ${
-                scrolled ? "text-[var(--color-brand-gold)]" : "text-[var(--color-brand-gold)]"
-              }`}
-              style={{ textShadow: scrolled ? "none" : "0 0 6px rgba(201,166,106,0.18)" }}
-            >
-              PROPERTIES
+            <span className="text-[10px] md:text-xs tracking-[0.4em] mt-1 text-gold">
+              ESTATE
             </span>
           </Link>
 
-          {/* Desktop menu (right) */}
+          {/* Desktop menu */}
           <ul className="hidden md:flex items-center gap-10 text-sm">
             {navItems.map((item) => (
               <li key={item.href}>
                 <Link
                   href={item.href}
-                  className={`relative py-1 px-0 transition-colors duration-200 nav-link ${
-                    scrolled ? "text-black/85 hover:text-black" : "text-white/90 hover:text-white"
-                  }`}
+                  className="group relative tracking-wide text-foreground/70 transition-colors duration-200 hover:text-foreground"
                 >
-                  <span>{item.label}</span>
-                  <span
-                    className="absolute left-0 right-0 -bottom-2 h-[2px] bg-[var(--color-brand-gold)] transform origin-left transition-transform duration-200 nav-underline"
-                    style={{ transform: "scaleX(0)" }}
-                  />
+                  {item.label}
+                  <span className="absolute left-0 -bottom-1.5 h-px w-0 bg-gold transition-all duration-300 group-hover:w-full" />
                 </Link>
               </li>
             ))}
           </ul>
 
-          {/* Right side actions */}
+          {/* Actions */}
           <div className="flex items-center gap-3">
-            <button className="hidden md:inline-flex btn-primary-hero transition-transform duration-200">
-              Enquire
-            </button>
+            <Link href="#contact" className="hidden md:inline-flex btn-gold">
+              Private Enquiry
+            </Link>
 
-            {/* Mobile menu button */}
             <button
               onClick={() => setOpen(!open)}
-              className={`md:hidden inline-flex items-center justify-center p-2 rounded transition-colors duration-200 ${
-                scrolled ? "text-black" : "text-white"
-              }`}
+              className="md:hidden inline-flex items-center justify-center p-2 text-foreground"
               aria-label="Toggle menu"
+              aria-expanded={open}
             >
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  strokeWidth="2"
-                  d={open ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"}
+                  strokeWidth="1.5"
+                  d={open ? "M6 18L18 6M6 6l12 12" : "M4 7h16M4 12h16M4 17h16"}
                 />
               </svg>
             </button>
@@ -104,19 +85,23 @@ export default function Navbar() {
 
       {/* Mobile menu */}
       {open && (
-        <div className={`md:hidden ${scrolled ? "bg-white/90" : "bg-black/50"} border-t border-white/6`}>
-          <div className="px-6 py-4">
-            <ul className={`flex flex-col gap-3 text-sm ${scrolled ? "text-black" : "text-white/90"}`}>
+        <div className="md:hidden bg-background/95 backdrop-blur-xl border-t border-border">
+          <div className="container-lux py-6">
+            <ul className="flex flex-col gap-1 text-sm">
               {navItems.map((item) => (
                 <li key={item.href}>
-                  <Link href={item.href} onClick={() => setOpen(false)} className="block py-2">
+                  <Link
+                    href={item.href}
+                    onClick={() => setOpen(false)}
+                    className="block py-3 tracking-wide text-foreground/80 hover:text-foreground"
+                  >
                     {item.label}
                   </Link>
                 </li>
               ))}
-              <li>
-                <Link href="/contact" className="block mt-2">
-                  <button className="w-full btn-primary-hero">Enquire</button>
+              <li className="pt-3">
+                <Link href="#contact" onClick={() => setOpen(false)} className="btn-gold w-full">
+                  Private Enquiry
                 </Link>
               </li>
             </ul>

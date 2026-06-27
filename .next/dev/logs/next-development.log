@@ -1,7 +1,23 @@
-[00:00:04.486] Server  LOG     ✓ Ready in 3.3s
-[00:01:57.820] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:01:58.985] Browser WARN    Image with src "/properties/crest.jpg" has "fill" but is missing "sizes" prop. Please add it to improve page performance. Read more: https://nextjs.org/docs/api-reference/next/image#sizes
-[00:01:58.985] Browser WARN    Image with src "/properties/aurelia.jpg" has "fill" but is missing "sizes" prop. Please add it to improve page performance. Read more: https://nextjs.org/docs/api-reference/next/image#sizes
-[00:01:58.985] Browser WARN    Image with src "/properties/bayview.jpg" has "fill" but is missing "sizes" prop. Please add it to improve page performance. Read more: https://nextjs.org/docs/api-reference/next/image#sizes
-[00:01:58.985] Browser WARN    Image with src "/about-1.jpg" has "fill" but is missing "sizes" prop. Please add it to improve page performance. Read more: https://nextjs.org/docs/api-reference/next/image#sizes
-[00:03:38.870] Server  LOG     ✓ Compiled in 527ms
+[00:00:00.938] Server  LOG     ✓ Ready in 591ms
+[00:01:22.947] Server  LOG     ✓ Compiled in 268ms
+[00:01:29.355] Server  LOG     ✓ Compiled in 139ms
+[00:01:30.716] Server  ERROR   ⨯ ReferenceError: geistMono is not defined
+[00:01:30.869] Server  ERROR   ⨯ ReferenceError: geistMono is not defined
+[00:01:35.521] Server  LOG     ✓ Compiled in 56ms
+[00:01:37.858] Browser ERROR   uncaughtError: ReferenceError: geistMono is not defined
+[00:01:52.081] Server  LOG     ✓ Compiled in 95ms
+[00:01:52.494] Server  WARN    ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+[00:01:52.618] Browser ERROR   unhandledRejection: Error: No link element found for chunk /_next/static/chunks/%5Broot-of-the-server%5D__dc823849._.css
+[00:02:08.193] Server  LOG     ✓ Compiled in 100ms
+[00:02:21.690] Server  LOG     ✓ Compiled in 127ms
+[00:02:35.000] Server  LOG     ✓ Compiled in 90ms
+[00:02:50.029] Server  LOG     ✓ Compiled in 82ms
+[00:03:07.941] Server  LOG     ✓ Compiled in 63ms
+[00:03:20.061] Server  LOG     ✓ Compiled in 87ms
+[00:03:26.863] Server  LOG     ✓ Compiled in 145ms
+[00:03:42.925] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:04:00.835] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:04:24.856] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:05:18.160] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:05:51.449] Server  LOG     ✓ Compiled in 227ms
+[00:06:00.995] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
