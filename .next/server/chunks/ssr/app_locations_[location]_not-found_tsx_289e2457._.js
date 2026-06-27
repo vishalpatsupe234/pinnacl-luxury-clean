@@ -1,3 +1,0 @@
-module.exports=[13386,a=>{"use strict";var b=a.i(7997);function c(){return(0,b.jsxs)("div",{className:"max-w-xl mx-auto px-6 py-24 text-center",children:[(0,b.jsx)("h2",{className:"text-2xl mb-4",children:"Location Not Found"}),(0,b.jsx)("p",{className:"text-gray-600",children:"We currently do not present developments in this location."})]})}a.s(["default",()=>c])}];
-
-//# sourceMappingURL=app_locations_%5Blocation%5D_not-found_tsx_289e2457._.js.map
