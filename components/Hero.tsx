@@ -1,9 +1,11 @@
 ﻿"use client";
 
+import LuxurySearchBar from "./LuxurySearchBar";
+
 export default function Hero() {
   return (
     <section className="relative h-screen overflow-hidden">
-      
+
       {/* VIDEO */}
       <video
         autoPlay
@@ -24,20 +26,22 @@ export default function Hero() {
 
       {/* CONTENT */}
       <div className="relative z-10 h-full flex items-center justify-center text-center px-6">
-        <div className="max-w-3xl animate-fade-in">
+        <div className="max-w-4xl animate-fade-in">
 
-          <span className="brand-logo mb-6 block">
-            PINNACL PRIVATE ADVISORY
-          </span>
-
-          <h1 className="brand-heading mb-6">
-            Where Every Home <br />
+          <h1
+            className="mb-6 text-5xl md:text-7xl font-semibold text-white"
+            style={{ fontFamily: "Playfair Display, serif" }}
+          >
+            Where Every Home
+            <br />
             Reflects You
           </h1>
 
-          <p className="brand-body mb-10">
-            Handpicked residences — curated for lifestyle & comfort
-          </p>
+          <p className="brand-body mb-8">
+  Handpicked residences — curated for lifestyle & comfort
+</p>
+
+<LuxurySearchBar />
 
         </div>
       </div>

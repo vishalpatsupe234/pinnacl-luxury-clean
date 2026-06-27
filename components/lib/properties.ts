@@ -1,0 +1,62 @@
+// lib/properties.ts
+export type Property = {
+  id: string;
+  slug: string;
+  title: string;
+  type: "Residential" | "Commercial";
+  category?: string;
+  status?: string;
+  price: number;
+  priceDisplay: string;
+  location: { city: string; area: string; address?: string; lat?: number; lng?: number };
+  images: string[];
+  isFeatured?: boolean;
+  beds?: number;
+  areaText?: string;
+  highlights?: string[];
+};
+
+export const PROPERTIES: Property[] = [
+  {
+    id: "crest-001",
+    slug: "pinnacl-crest-powai",
+    title: "Pinnacl Crest, Powai",
+    type: "Residential",
+    price: 32000000,
+    priceDisplay: "₹3.2 Cr onwards",
+    location: { city: "Mumbai", area: "Powai" },
+    images: ["/properties/crest.jpg"],
+    isFeatured: true,
+    beds: 2,
+    areaText: "780 – 1150 sq.ft",
+    highlights: ["OC received – no GST applicable", "Walkable to business & lake"],
+  },
+  {
+    id: "aurelia-001",
+    slug: "pinnacl-aurelia-bkc",
+    title: "Pinnacl Aurelia",
+    type: "Residential",
+    price: 48000000,
+    priceDisplay: "₹4.8 Cr onwards",
+    location: { city: "Mumbai", area: "BKC Annexe" },
+    images: ["/properties/aurelia.jpg"],
+    isFeatured: false,
+    beds: 3,
+    areaText: "1050 – 1350 sq.ft",
+    highlights: ["Close to BKC corporate hub", "Club, gym & amenities"],
+  },
+  {
+    id: "bayview-001",
+    slug: "pinnacl-bayview-worli",
+    title: "Pinnacl Bayview",
+    type: "Residential",
+    price: 65000000,
+    priceDisplay: "₹6.5 Cr onwards",
+    location: { city: "Mumbai", area: "Worli" },
+    images: ["/properties/bayview.jpg"],
+    isFeatured: false,
+    beds: 3,
+    areaText: "1350 – 1850 sq.ft",
+    highlights: ["Sea Facing", "Premium address"],
+  },
+];
