@@ -37,7 +37,7 @@ const Collaboration: React.FC = () => {
 
             <p className="mt-4 text-sm text-brand-grey max-w-xl">
               We partner with select builders, investors and advisors to create curated residential
-              experiences. If you value quality, clarity and long-term relationships — let’s explore
+              experiences. If you value quality, clarity and long-term relationships — let&apos;s explore
               synergies.
             </p>
 
@@ -77,7 +77,7 @@ const Collaboration: React.FC = () => {
 
           {/* Right: Simple contact card (Client Component) */}
           <div className="bg-white rounded-2xl border border-neutral-200 p-6 shadow-sm">
-            <h3 className="font-semibold text-lg text-brand-black mb-2">Let's Talk</h3>
+            <h3 className="font-semibold text-lg text-brand-black mb-2">Let&apos;s Talk</h3>
             <p className="text-sm text-brand-grey mb-4">
               Share a brief about your project or partnership idea and our team will get back within 48 hours.
             </p>

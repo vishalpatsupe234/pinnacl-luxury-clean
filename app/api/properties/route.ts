@@ -1,7 +1,11 @@
 ﻿import fs from "fs/promises";
 import path from "path";
 
-type PropertyItem = { id?: string; slug?: string; [key: string]: any };
+type PropertyItem = {
+  id?: string;
+  slug?: string;
+  [key: string]: unknown;
+};
 
 // Increase TTL to 5 minutes
 const CACHE_TTL_MS = 5 * 60 * 1000;
@@ -15,8 +19,12 @@ async function readDataFile(): Promise<PropertyItem[]> {
 
   const file = path.join(process.cwd(), "data", "properties.json");
   const raw = await fs.readFile(file, "utf8");
-  const obj = JSON.parse(raw);
-  const items = Array.isArray(obj.items) ? obj.items : (obj as any);
+  const obj = JSON.parse(raw) as unknown;
+  const items: PropertyItem[] = Array.isArray(obj)
+    ? (obj as PropertyItem[])
+    : typeof obj === "object" && obj !== null && "items" in obj && Array.isArray((obj as { items?: unknown }).items)
+      ? ((obj as { items?: PropertyItem[] }).items ?? [])
+      : [];
   cache = { ts: now, data: items };
   return items;
 }
@@ -35,11 +43,11 @@ export async function GET(req: Request) {
     const tB = Date.now();
     const url = new URL(req.url);
     const slug = url.searchParams.get("slug");
-    let body: any;
+    let body: PropertyItem | PropertyItem[] | Record<string, unknown>;
 
     if (slug) {
-      const result = items.find(i => i && (i.slug === slug || i.id === slug));
-      body = result ?? {};
+      const result = items.find((i) => i && (i.slug === slug || i.id === slug));
+      body = (result ?? {}) as PropertyItem;
     } else {
       body = items;
     }

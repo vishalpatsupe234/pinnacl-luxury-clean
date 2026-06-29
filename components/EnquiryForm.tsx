@@ -31,7 +31,7 @@ export default function EnquiryForm({ propertyId, propertyTitle }: Props) {
   }
 
   if (sent) {
-    return <div className="p-4 rounded bg-green-50 text-green-800">Thanks — enquiry sent. We'll contact you soon.</div>;
+    return <div className="p-4 rounded bg-green-50 text-green-800">Thanks — enquiry sent. We&apos;ll contact you soon.</div>;
   }
 
   return (

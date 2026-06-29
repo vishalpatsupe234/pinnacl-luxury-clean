@@ -15,7 +15,7 @@ const CTA: React.FC = () => {
         </p>
 
         <h2 className="font-serif text-3xl md:text-4xl leading-tight">
-          Let's find a home that reflects  
+          Let&apos;s find a home that reflects  
           <span className="text-brand-gold"> you.</span>
         </h2>
 

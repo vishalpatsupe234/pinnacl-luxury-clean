@@ -19,19 +19,27 @@ type Item = {
 };
 
 type Props = {
-  initialItems?: Item[] | { items?: Item[] } | any;
+  initialItems?: Item[] | { items?: Item[] } | unknown;
 };
 
 export default function PropertiesList({ initialItems = [] }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const normalize = (v: any): Item[] => {
+  const normalize = (v: unknown): Item[] => {
     if (!v) return [];
-    if (Array.isArray(v)) return v;
-    if (v.items && Array.isArray(v.items)) return v.items;
-    for (const key of Object.keys(v)) {
-      if (Array.isArray(v[key])) return v[key];
+    if (Array.isArray(v)) return v as Item[];
+    if (typeof v === "object" && v !== null && "items" in v) {
+      const items = (v as { items?: unknown }).items;
+      if (Array.isArray(items)) return items as Item[];
+    }
+    if (typeof v === "object" && v !== null) {
+      for (const key of Object.keys(v as Record<string, unknown>)) {
+        const candidate = (v as Record<string, unknown>)[key];
+        if (Array.isArray(candidate)) {
+          return candidate as Item[];
+        }
+      }
     }
     return [];
   };
@@ -109,7 +117,7 @@ export default function PropertiesList({ initialItems = [] }: Props) {
       setMin(params.min ? String(params.min) : "");
       setMax(params.max ? String(params.max) : "");
     }
-  }, [searchParams?.toString()]);
+  }, [searchParams]);
 
   return (
     <div className="flex gap-8">

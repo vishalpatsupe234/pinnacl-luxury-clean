@@ -1,126 +1,121 @@
 ﻿"use client";
-// components/Navbar.tsx
-"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
+const navItems = [
+  { href: "/", label: "Home" },
+  { href: "/projects", label: "Projects" },
+  { href: "/about", label: "About" },
+  { href: "/contact", label: "Contact" },
+];
+
 export default function Navbar() {
+  const pathname = usePathname();
+  const isHome = pathname === "/";
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
     function onScroll() {
-      setScrolled(window.scrollY > 40);
+      setScrolled(window.scrollY > 60);
     }
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const navItems = [
-    { href: "/", label: "HOME" },
-    { href: "/projects", label: "PROJECTS" },
-    { href: "/about", label: "ABOUT" },
-    { href: "/blog", label: "BLOG" },
-    { href: "/contact", label: "CONTACT" },
-  ];
+  const solid = !isHome || scrolled;
 
   return (
     <header
-      className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${
-        scrolled
-          ? "backdrop-blur-sm bg-white/80 border-b border-black/5 scrolled-shadow"
-          : "backdrop-blur-xl bg-black/30 border-b border-white/10"
+      className={`fixed inset-x-0 top-0 z-50 transition-all duration-500 ${
+        solid
+          ? "bg-white border-b border-brand-black/5"
+          : "bg-transparent"
       }`}
     >
-      <div className="max-w-7xl mx-auto px-6">
+      <div className="section-shell">
         <nav className="flex items-center justify-between h-20 md:h-24">
-          {/* Logo (stacked). Text color toggles with scrolled state */}
-          <Link href="/" className="flex flex-col leading-none select-none">
+          <Link href="/" className="select-none">
             <span
-              className={`font-playfair text-xl md:text-2xl tracking-widest font-semibold transition-colors duration-300 ${
-                scrolled ? "text-black" : "text-white"
+              className={`font-serif text-xl md:text-2xl tracking-[0.15em] transition-colors duration-300 ${
+                scrolled ? "text-brand-gold" : "text-brand-gold"
               }`}
             >
-              PINNACL
+              Pinnacl
             </span>
-
             <span
-              className={`text-xs md:text-sm tracking-wider mt-1 transition-colors duration-300 ${
-                scrolled ? "text-[var(--color-brand-gold)]" : "text-[var(--color-brand-gold)]"
+              className={`block text-[10px] md:text-xs tracking-[0.35em] uppercase mt-0.5 transition-colors duration-300 ${
+                solid ? "text-brand-muted" : "text-white/60"
               }`}
-              style={{ textShadow: scrolled ? "none" : "0 0 6px rgba(201,166,106,0.18)" }}
             >
-              PROPERTIES
+              Properties
             </span>
           </Link>
 
-          {/* Desktop menu (right) */}
-          <ul className="hidden md:flex items-center gap-10 text-sm">
+          <ul className="hidden md:flex items-center gap-12">
             {navItems.map((item) => (
               <li key={item.href}>
                 <Link
                   href={item.href}
-                  className={`relative py-1 px-0 transition-colors duration-200 nav-link ${
-                    scrolled ? "text-black/85 hover:text-black" : "text-white/90 hover:text-white"
+                  className={`text-xs uppercase tracking-[0.2em] font-light transition-colors duration-300 ${
+                    solid
+                      ? "text-brand-black/70 hover:text-brand-black"
+                      : "text-white/80 hover:text-white"
                   }`}
                 >
-                  <span>{item.label}</span>
-                  <span
-                    className="absolute left-0 right-0 -bottom-2 h-[2px] bg-[var(--color-brand-gold)] transform origin-left transition-transform duration-200 nav-underline"
-                    style={{ transform: "scaleX(0)" }}
-                  />
+                  {item.label}
                 </Link>
               </li>
             ))}
           </ul>
 
-          {/* Right side actions */}
-          <div className="flex items-center gap-3">
-            <button className="hidden md:inline-flex btn-primary-hero transition-transform duration-200">
-              Enquire
-            </button>
-
-            {/* Mobile menu button */}
-            <button
-              onClick={() => setOpen(!open)}
-              className={`md:hidden inline-flex items-center justify-center p-2 rounded transition-colors duration-200 ${
-                scrolled ? "text-black" : "text-white"
-              }`}
-              aria-label="Toggle menu"
-            >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d={open ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"}
-                />
-              </svg>
-            </button>
-          </div>
+          <button
+            onClick={() => setOpen(!open)}
+            className={`md:hidden p-2 transition-colors duration-300 ${
+              solid ? "text-brand-black" : "text-white"
+            }`}
+            aria-label="Toggle menu"
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="1.5"
+                d={open ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"}
+              />
+            </svg>
+          </button>
         </nav>
       </div>
 
-      {/* Mobile menu */}
       {open && (
-        <div className={`md:hidden ${scrolled ? "bg-white/90" : "bg-black/50"} border-t border-white/6`}>
-          <div className="px-6 py-4">
-            <ul className={`flex flex-col gap-3 text-sm ${scrolled ? "text-black" : "text-white/90"}`}>
-              {navItems.map((item) => (
-                <li key={item.href}>
-                  <Link href={item.href} onClick={() => setOpen(false)} className="block py-2">
-                    {item.label}
-                  </Link>
-                </li>
-              ))}
-              <li>
-                <Link href="/contact" className="block mt-2">
-                  <button className="w-full btn-primary-hero">Enquire</button>
+        <div
+          className={`md:hidden border-t ${
+            solid
+              ? "bg-white border-brand-black/5"
+              : "bg-brand-black/90 border-white/10"
+          }`}
+        >
+          <ul
+            className={`px-6 py-6 flex flex-col gap-4 ${
+              solid ? "text-brand-black" : "text-white/90"
+            }`}
+          >
+            {navItems.map((item) => (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  onClick={() => setOpen(false)}
+                  className="block py-1 text-xs uppercase tracking-[0.2em] font-light"
+                >
+                  {item.label}
                 </Link>
               </li>
-            </ul>
-          </div>
+            ))}
+          </ul>
         </div>
       )}
     </header>

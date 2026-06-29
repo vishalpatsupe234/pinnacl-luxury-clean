@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import PropertiesList from "./PropertiesList";
 
 type Props = {
-  initialItems: any[];
+  initialItems: unknown[];
 };
 
 export default function PropertiesClient({ initialItems }: Props) {

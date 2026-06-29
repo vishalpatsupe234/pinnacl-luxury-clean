@@ -1,51 +1,44 @@
 ﻿"use client";
 
-import LuxurySearchBar from "./LuxurySearchBar";
+import Image from "next/image";
+import Link from "next/link";
+
+const HERO_IMAGE =
+  "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=2400&q=80";
 
 export default function Hero() {
   return (
-    <section className="relative h-screen overflow-hidden">
+    <section className="relative h-[100vh] min-h-[600px] overflow-hidden">
+      <Image
+        src={HERO_IMAGE}
+        alt="Luxury residence"
+        fill
+        priority
+        className="object-cover"
+        sizes="100vw"
+      />
 
-      {/* VIDEO */}
-      <video
-        autoPlay
-        muted
-        loop
-        playsInline
-        preload="auto"
-        className="absolute inset-0 w-full h-full object-cover"
-        onLoadedMetadata={(e) => {
-          e.currentTarget.playbackRate = 0.6;
-        }}
-      >
-        <source src="/videos/hero.mp4" type="video/mp4" />
-      </video>
+      <div className="absolute inset-0 bg-black/55" />
 
-      {/* OVERLAY */}
-      <div className="absolute inset-0 bg-black/50" />
-
-      {/* CONTENT */}
       <div className="relative z-10 h-full flex items-center justify-center text-center px-6">
-        <div className="max-w-4xl animate-fade-in">
-
-          <h1
-            className="mb-6 text-5xl md:text-7xl font-semibold text-white"
-            style={{ fontFamily: "Playfair Display, serif" }}
-          >
+        <div className="max-w-3xl animate-fade-in">
+          <h1 className="font-serif text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-normal text-white leading-[1.08]">
             Where Every Home
             <br />
             Reflects You
           </h1>
 
-          <p className="brand-body mb-8">
-  Handpicked residences — curated for lifestyle & comfort
-</p>
+          <p className="mt-8 text-sm md:text-base font-light tracking-[0.18em] text-white/70 uppercase">
+            Luxury. Trust. Simplicity. Transparency.
+          </p>
 
-<LuxurySearchBar />
-
+          <div className="mt-12">
+            <Link href="/projects" className="btn-gold-outline">
+              Explore Properties
+            </Link>
+          </div>
         </div>
       </div>
-
     </section>
   );
 }
