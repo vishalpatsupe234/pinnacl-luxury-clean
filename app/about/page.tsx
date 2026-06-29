@@ -1,12 +1,31 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Navbar from "@/components/Navbar";
 import EnquirySection from "@/components/EnquirySection";
 import Footer from "@/components/Footer";
 
-export const metadata = {
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://pinnaclproperties.com";
+
+export const metadata: Metadata = {
   title: "About",
   description:
     "Learn about Pinnacl Properties — a luxury property advisory built on trust, simplicity, and transparency.",
+  alternates: {
+    canonical: `${siteUrl}/about`,
+  },
+  openGraph: {
+    title: "About Pinnacl Properties",
+    description:
+      "Meet the team behind Pinnacl Properties and discover how we curate premium homes with trust, transparency, and a luxury-first approach.",
+    url: `${siteUrl}/about`,
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "About Pinnacl Properties",
+    description:
+      "Meet the team behind Pinnacl Properties and discover how we curate premium homes with trust, transparency, and a luxury-first approach.",
+  },
 };
 
 const ABOUT_IMAGE =

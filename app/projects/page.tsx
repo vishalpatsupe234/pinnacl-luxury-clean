@@ -1,13 +1,32 @@
+import type { Metadata } from "next";
 import propertiesData from "@/data/properties.json";
 import Navbar from "@/components/Navbar";
 import ProjectsGrid from "@/components/ProjectsGrid";
 import EnquirySection from "@/components/EnquirySection";
 import Footer from "@/components/Footer";
 
-export const metadata = {
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://pinnaclproperties.com";
+
+export const metadata: Metadata = {
   title: "Projects",
   description:
     "Explore our curated portfolio of luxury residential projects across Mumbai and premium locations.",
+  alternates: {
+    canonical: `${siteUrl}/projects`,
+  },
+  openGraph: {
+    title: "Pinnacl Properties Projects",
+    description:
+      "Explore a curated portfolio of luxury residential projects across Mumbai, selected for architecture, location, and long-term value.",
+    url: `${siteUrl}/projects`,
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "Pinnacl Properties Projects",
+    description:
+      "Explore a curated portfolio of luxury residential projects across Mumbai, selected for architecture, location, and long-term value.",
+  },
 };
 
 export default function ProjectsPage() {
