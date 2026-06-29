@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import PropertyCardLux from "./PropertyCardLux";
 
@@ -10,6 +10,7 @@ type Item = {
   name?: string;
   slug?: string;
   type?: string;
+  status?: string;
   price?: number;
   priceDisplay?: string;
   location?: { area?: string; city?: string };
@@ -26,7 +27,7 @@ export default function PropertiesList({ initialItems = [] }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const normalize = (v: unknown): Item[] => {
+  const normalize = useCallback((v: unknown): Item[] => {
     if (!v) return [];
     if (Array.isArray(v)) return v as Item[];
     if (typeof v === "object" && v !== null && "items" in v) {
@@ -42,17 +43,19 @@ export default function PropertiesList({ initialItems = [] }: Props) {
       }
     }
     return [];
-  };
+  }, []);
 
   const [items, setItems] = useState<Item[]>(normalize(initialItems));
   const [loading, setLoading] = useState(false);
 
+  const [search, setSearch] = useState(searchParams.get("search") || searchParams.get("q") || "");
   const [type, setType] = useState(searchParams.get("type") || "");
   const [loc, setLoc] = useState(searchParams.get("loc") || "");
   const [min, setMin] = useState(searchParams.get("min") || "");
   const [max, setMax] = useState(searchParams.get("max") || "");
+  const [status, setStatus] = useState(searchParams.get("status") || "");
 
-  async function fetchItems(params: Record<string, string | number | undefined>) {
+  const fetchItems = useCallback(async (params: Record<string, string | number | undefined>) => {
     try {
       setLoading(true);
 
@@ -64,7 +67,7 @@ export default function PropertiesList({ initialItems = [] }: Props) {
       const url = new URL("/api/properties", base);
 
       Object.entries(params).forEach(([k, v]) => {
-        if (v !== undefined && String(v).length > 0) {
+        if (v !== undefined && String(v).trim().length > 0) {
           url.searchParams.set(k, String(v));
         }
       });
@@ -83,47 +86,58 @@ export default function PropertiesList({ initialItems = [] }: Props) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [normalize]);
 
   function applyFilters() {
     const params = new URLSearchParams();
+    if (search.trim()) params.set("search", search.trim());
     if (type) params.set("type", type);
-    if (loc) params.set("loc", loc);
+    if (loc.trim()) params.set("loc", loc.trim());
     if (min) params.set("min", min);
     if (max) params.set("max", max);
+    if (status) params.set("status", status);
 
-    router.push(`/properties?${params.toString()}`);
-
-    fetchItems({
-      type,
-      loc,
-      min: min ? Number(min) : undefined,
-      max: max ? Number(max) : undefined,
-    });
+    const query = params.toString();
+    router.push(query ? `/properties?${query}` : "/properties", { scroll: false });
   }
 
   useEffect(() => {
-    const params = {
-      type: searchParams.get("type") || undefined,
-      loc: searchParams.get("loc") || undefined,
-      min: searchParams.get("min") ? Number(searchParams.get("min")) : undefined,
-      max: searchParams.get("max") ? Number(searchParams.get("max")) : undefined,
-    };
+    const searchValue = searchParams.get("search") || searchParams.get("q") || undefined;
+    const typeValue = searchParams.get("type") || undefined;
+    const locValue = searchParams.get("loc") || undefined;
+    const minValue = searchParams.get("min") ? Number(searchParams.get("min")) : undefined;
+    const maxValue = searchParams.get("max") ? Number(searchParams.get("max")) : undefined;
+    const statusValue = searchParams.get("status") || undefined;
 
-    if (params.type || params.loc || params.min || params.max) {
-      fetchItems(params);
-      setType(params.type || "");
-      setLoc(params.loc || "");
-      setMin(params.min ? String(params.min) : "");
-      setMax(params.max ? String(params.max) : "");
+    setSearch(searchValue || "");
+    setType(typeValue || "");
+    setLoc(locValue || "");
+    setMin(minValue ? String(minValue) : "");
+    setMax(maxValue ? String(maxValue) : "");
+    setStatus(statusValue || "");
+
+    if (searchValue || typeValue || locValue || minValue || maxValue || statusValue) {
+      fetchItems({
+        search: searchValue,
+        type: typeValue,
+        loc: locValue,
+        min: minValue,
+        max: maxValue,
+        status: statusValue,
+      });
+    } else {
+      setItems(normalize(initialItems));
     }
-  }, [searchParams]);
+  }, [fetchItems, initialItems, normalize, searchParams]);
 
   return (
     <div className="flex gap-8">
       <aside className="w-full max-w-xs sticky top-24 self-start">
         <div className="card-surface">
           <h3 className="font-semibold mb-3">Filters</h3>
+
+          <label className="text-xs block mb-2">Search</label>
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by project, area, or builder" className="w-full px-3 py-2 rounded border text-sm mb-3" />
 
           <label className="text-xs block mb-2">Type</label>
           <div className="flex gap-2 mb-3">
@@ -135,6 +149,14 @@ export default function PropertiesList({ initialItems = [] }: Props) {
           <label className="text-xs block mb-2">Location</label>
           <input value={loc} onChange={(e) => setLoc(e.target.value)} placeholder="Powai, BKC..." className="w-full px-3 py-2 rounded border text-sm mb-3" />
 
+          <label className="text-xs block mb-2">Status</label>
+          <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full px-3 py-2 rounded border text-sm mb-3">
+            <option value="">Any</option>
+            <option value="Available">Available</option>
+            <option value="Upcoming">Upcoming</option>
+            <option value="Sold Out">Sold Out</option>
+          </select>
+
           <label className="text-xs block mb-2">Price min</label>
           <input value={min} onChange={(e) => setMin(e.target.value)} className="w-full px-3 py-2 rounded border text-sm mb-3" />
 
@@ -145,9 +167,14 @@ export default function PropertiesList({ initialItems = [] }: Props) {
             <button onClick={applyFilters} className="btn-primary-hero w-full">Apply</button>
             <button
               onClick={() => {
-                setType(""); setLoc(""); setMin(""); setMax("");
-                router.push("/properties");
-                fetchItems({});
+                setSearch("");
+                setType("");
+                setLoc("");
+                setMin("");
+                setMax("");
+                setStatus("");
+                router.push("/properties", { scroll: false });
+                setItems(normalize(initialItems));
               }}
               className="btn-outline w-full"
             >
