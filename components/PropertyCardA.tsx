@@ -1,4 +1,5 @@
 // components/PropertyCardA.tsx
+import Image from "next/image";
 import React from "react";
 
 type Props = {
@@ -13,7 +14,7 @@ export default function PropertyCardA({ title, location, price, tag, img }: Prop
   return (
     <article className="bg-white rounded-2xl overflow-hidden shadow-card-a border border-transparent hover:border-[rgba(201,166,106,0.12)] transition-all">
       <div className="h-44 w-full overflow-hidden rounded-t-2xl">
-        <img src={img} alt={title} className="w-full h-full object-cover" />
+        <Image src={img} alt={title} width={400} height={300} className="w-full h-full object-cover" />
       </div>
 
       <div className="p-6">

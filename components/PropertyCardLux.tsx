@@ -1,6 +1,7 @@
 // components/PropertyCardLux.tsx
 "use client";
 
+import Image from "next/image";
 import React from "react";
 import Link from "next/link";
 
@@ -25,9 +26,11 @@ export default function PropertyCardLux({ img, slug, tag, title, location, price
     >
       {/* image */}
       <div className="img-wrap relative h-56 md:h-60 overflow-hidden rounded-t-2xl">
-        <img
+        <Image
           src={img}
           alt={title}
+          width={400}
+          height={300}
           className="w-full h-full object-cover transform transition-transform duration-700 group-hover:scale-105"
           loading="lazy"
         />

@@ -28,8 +28,7 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function PropertiesPage() {
-  const base =
-    process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  const base = process.env.NEXT_PUBLIC_SITE_URL || "https://pinnaclproperties.com";
 
   const res = await fetch(`${base}/api/properties`, {
     cache: "no-store",

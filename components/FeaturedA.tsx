@@ -1,4 +1,5 @@
 // components/FeaturedA.tsx
+import Image from "next/image";
 import React from "react";
 
 export default function FeaturedA() {
@@ -18,7 +19,7 @@ export default function FeaturedA() {
           {items.map((it) => (
             <article key={it.title} className="bg-white rounded-2xl overflow-hidden shadow-card-a border border-transparent hover:border-[rgba(201,166,106,0.12)] transition-all">
               <div className="h-44 w-full overflow-hidden">
-                <img src={it.img} alt={it.title} className="w-full h-full object-cover" />
+                <Image src={it.img} alt={it.title} width={400} height={300} className="w-full h-full object-cover" />
               </div>
               <div className="p-6">
                 <div className="mb-2 text-xs text-neutral-400 font-medium">Ready Possession</div>

@@ -1,4 +1,5 @@
 // components/FeaturedB.tsx
+import Image from "next/image";
 import React from "react";
 
 export default function FeaturedB() {
@@ -16,7 +17,7 @@ export default function FeaturedB() {
           {items.map(it => (
             <article key={it.title} className="rounded-lg p-6 hover:bg-white/80 transition-colors">
               <div className="rounded-md overflow-hidden mb-5 h-40">
-                <img src={it.img} alt={it.title} className="w-full h-full object-cover" />
+                <Image src={it.img} alt={it.title} width={400} height={300} className="w-full h-full object-cover" />
               </div>
               <h4 className="text-2xl font-serif text-[#111] mb-1">{it.title}</h4>
               <p className="text-sm text-neutral-500 mb-4">{it.subtitle}</p>
