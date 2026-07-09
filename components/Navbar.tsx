@@ -1,5 +1,6 @@
 ﻿"use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -39,20 +40,16 @@ export default function Navbar() {
       <div className="section-shell">
         <nav className="flex items-center justify-between h-20 md:h-24">
           <Link href="/" className="select-none">
-            <span
-              className={`font-serif text-xl md:text-2xl tracking-[0.15em] transition-colors duration-300 ${
-                scrolled ? "text-brand-gold" : "text-brand-gold"
-              }`}
-            >
-              Pinnacl
-            </span>
-            <span
-              className={`block text-[10px] md:text-xs tracking-[0.35em] uppercase mt-0.5 transition-colors duration-300 ${
-                solid ? "text-brand-muted" : "text-white/60"
-              }`}
-            >
-              Properties
-            </span>
+            <div className="flex items-center gap-3">
+              <Image
+                src="/logo/pinnacl-logo.png"
+                alt="Pinnacl Properties"
+                width={120}
+                height={44}
+                priority
+                className="h-8 w-auto md:h-10"
+              />
+            </div>
           </Link>
 
           <ul className="hidden md:flex items-center gap-12">
