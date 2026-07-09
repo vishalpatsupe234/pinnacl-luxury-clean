@@ -42,7 +42,7 @@ export default function Navbar() {
           <Link href="/" className="select-none">
             <div className="flex items-center gap-3">
               <Image
-                src="/logo/pinnacl-logo.png"
+                src="/logo/pinnacl-logo-transparent.png"
                 alt="Pinnacl Properties"
                 width={120}
                 height={44}
