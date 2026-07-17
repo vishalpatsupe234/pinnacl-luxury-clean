@@ -38,8 +38,8 @@ export default function Navbar() {
       }`}
     >
       <div className="section-shell">
-        <nav className="flex items-center justify-between h-20 md:h-24">
-          <Link href="/" className="select-none">
+        <nav className="flex items-center justify-between gap-4 h-16 md:h-20">
+          <Link href="/" className="select-none shrink-0">
             <div className="flex items-center gap-3">
               <Image
                 src="/logo/pinnacl-logo-transparent.png"
@@ -47,12 +47,12 @@ export default function Navbar() {
                 width={120}
                 height={44}
                 priority
-                className="h-8 w-auto md:h-10"
+                className="h-9 w-auto md:h-14"
               />
             </div>
           </Link>
 
-          <ul className="hidden md:flex items-center gap-12">
+          <ul className="hidden md:flex items-center gap-8 lg:gap-10 flex-nowrap">
             {navItems.map((item) => (
               <li key={item.href}>
                 <Link
