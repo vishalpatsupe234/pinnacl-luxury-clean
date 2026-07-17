@@ -4,6 +4,18 @@
 This roadmap defines the current MVP, the next development stages, and the ideas that should remain on hold until the product has validated its core luxury buyer funnel.
 It is intentionally phased to keep the scope grounded and aligned with a lean, evidence-driven launch.
 
+## Brand Tagline
+Luxury. Trust. Simplicity.
+
+## Target Audience
+- High Net Worth Individuals (HNIs)
+- Business owners
+- CXOs
+- NRIs
+- Investors
+- Luxury home buyers
+- Premium family buyers
+
 ## Phase 1 — Lean Launch (Current)
 ### Objective
 Launch a high-end, conversion-focused website for Pinnacl Properties that showcases curated downtown Mumbai residences, establishes trust, and enables lead capture.
@@ -14,6 +26,7 @@ Launch a high-end, conversion-focused website for Pinnacl Properties that showca
 - Contact and enquiry forms are functional and submit to the lead handler.
 - Site builds cleanly and passes lint.
 - SEO metadata and schema are present for primary pages.
+- The design reflects logo-inspired minimalism, timeless elegance, premium white space, and the Black/White/Soft Metallic Gold palette.
 
 ### In-Scope Deliverables
 - `app/page.tsx` home page with video hero and trust statements.

@@ -4,12 +4,16 @@
 This design system documents the visual language, layout rules, component patterns, and interaction principles for Pinnacl Properties.
 It is intended to guide consistent UI work and support future design-driven development.
 
+## Brand Tagline
+Luxury. Trust. Simplicity.
+
 ## Core Brand Principles
 - Luxury, not loud.
 - Confident, not gimmicky.
 - Minimal, not cold.
 - Trustworthy, not flashy.
 - Elegant spacing and restrained contrast.
+- Calm luxury in every interaction.
 
 ## Brand Tokens
 ### Color Palette
@@ -18,8 +22,18 @@ It is intended to guide consistent UI work and support future design-driven deve
 - `#111111` — Primary heading and body text.
 - `#7C7C76` — Muted text and secondary copy.
 - `#C9A66A` — Brand gold accent for buttons, highlights, and dividers.
-- `#B79A67` — Soft gold for subtle backgrounds.
+- `#B79A67` — Soft Metallic Gold for subtle accents and premium surfaces.
 - `#E6E2D8` — Light border and divider tone.
+
+### Logo-Derived Visual Identity
+The site’s visual language is derived from the logo through:
+- Minimalism: clean layouts with few decorative elements.
+- Timeless elegance: serif headings, monochrome balance, and architectural spacing.
+- Premium white space: generous breathing room around text and images.
+- Black + White + Soft Metallic Gold palette: primary visual system.
+- Calm luxury: restrained motion, quiet type, and refined materials.
+- Editorial layout: strong content hierarchy, thoughtful copy placement, and structured sections.
+- Architectural photography: use polished property imagery that feels grounded and aspirational.
 
 ### Typography
 - Primary heading font: `Playfair Display` via `next/font` in `app/layout.tsx`.
@@ -110,6 +124,7 @@ It is intended to guide consistent UI work and support future design-driven deve
 - Keep motion minimal and functional.
 - Use fade-in transitions sparingly.
 - Avoid high-frequency animation or distracting movement.
+- Maintain elegant spacing and calm, unobtrusive interactions.
 - Ensure hover and focus states are perceptible but subtle.
 
 ## Content & Copy Style
@@ -127,3 +142,19 @@ It is intended to guide consistent UI work and support future design-driven deve
 - This system is a guide for development and should be applied consistently across all pages.
 - When new components are added, reference the existing `app/globals.css` utilities and brand tokens.
 - Any divergence from this system should be justified with a brand or UX decision.
+
+## Target Audience
+- High Net Worth Individuals (HNIs)
+- Business owners
+- CXOs
+- NRIs
+- Investors
+- Luxury home buyers
+- Premium family buyers
+
+## Iconography Guidelines
+- Use thin outline icons with consistent stroke weight.
+- Prefer premium minimal icons with restrained detail.
+- Avoid colorful icons; keep icon color neutral or gold.
+- Maintain uniform spacing around iconography.
+- Align icon style with the luxury editorial tone of the site.
