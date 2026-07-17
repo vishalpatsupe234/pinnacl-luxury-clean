@@ -99,6 +99,7 @@ Iconography should be thin, premium, and minimal with consistent stroke weight; 
 - Non-destructive UX improvements in component documentation.
 - Metadata and schema validation.
 - Hero component structure refinement (H001 completed).
+- Hero background media implementation (H002 completed - premium still image with modular HeroMedia component for future video flexibility).
 
 ## Current Caution Areas
 - Do not modify the core hero, logo, or brand assets without approval.

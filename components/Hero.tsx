@@ -1,20 +1,12 @@
 ﻿"use client";
 
 import Link from "next/link";
+import HeroMedia from "./HeroMedia";
 
 export default function Hero() {
   return (
     <section className="relative isolate overflow-hidden bg-brand-black">
-      <video
-        src="/videos/hero.mp4"
-        className="absolute inset-0 h-full w-full object-cover"
-        autoPlay
-        muted
-        loop
-        playsInline
-        preload="metadata"
-        aria-hidden="true"
-      />
+      <HeroMedia type="image" src="/hero.jpg" alt="Premium architectural luxury residence" />
 
       <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(17,17,17,0.82)_0%,rgba(17,17,17,0.56)_34%,rgba(17,17,17,0.28)_62%,rgba(17,17,17,0.45)_100%)]" />
       <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(17,17,17,0.06)_0%,rgba(17,17,17,0.18)_42%,rgba(17,17,17,0.72)_100%)]" />

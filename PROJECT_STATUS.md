@@ -33,7 +33,8 @@ original committed baseline._
 
 ## 3. Uncommitted Working-Tree Changes (Not Yet Committed, Not Approved)
 
-- `components/Hero.tsx` — Updated with refined grid structure per H001 (Hero Structure task)
+- `components/Hero.tsx` — Updated with refined grid structure per H001 (Hero Structure task); replaced video with modular HeroMedia component using premium image per H002 (Hero Background Media task)
+- `components/HeroMedia.tsx` — New modular component created for H002 to support image/video flexibility
 - `components/Navbar.tsx`
 - `next-env.d.ts`
 - Untracked: `current-changes.txt`
