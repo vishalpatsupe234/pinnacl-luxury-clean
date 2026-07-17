@@ -20,23 +20,25 @@ export default function Hero() {
       <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(17,17,17,0.06)_0%,rgba(17,17,17,0.18)_42%,rgba(17,17,17,0.72)_100%)]" />
 
       <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-7xl items-center px-6 pb-16 pt-24 sm:px-8 md:px-10 lg:px-12">
-        <div className="max-w-3xl text-center md:text-left animate-fade-in">
-          <p className="mb-5 text-[10px] font-semibold uppercase tracking-[0.42em] text-white/68">
-            Pinnacl Properties
-          </p>
+        <div className="grid w-full max-w-3xl gap-8 md:gap-10">
+          <div className="text-center md:text-left animate-fade-in">
+            <p className="mb-5 text-[10px] font-semibold uppercase tracking-[0.42em] text-white/68">
+              Pinnacl Properties
+            </p>
 
-          <h1 className="font-serif text-4xl leading-[1.04] text-white sm:text-5xl lg:text-6xl xl:text-7xl">
-            Curated
-            <span className="block text-brand-gold">Luxury Living</span>
-            in Mumbai
-          </h1>
+            <h1 className="font-serif text-4xl leading-[1.04] text-white sm:text-5xl lg:text-6xl xl:text-7xl">
+              Curated
+              <span className="block text-brand-gold">Luxury Living</span>
+              in Mumbai
+            </h1>
 
-          <p className="mt-6 max-w-2xl text-sm font-light leading-7 text-white/72 sm:text-base lg:text-lg">
-            Discover signature residences in Mumbai&apos;s most desirable addresses,
-            backed by trusted guidance, transparent pricing, and private viewings.
-          </p>
+            <p className="mt-6 max-w-2xl text-sm font-light leading-7 text-white/72 sm:text-base lg:text-lg">
+              Discover signature residences in Mumbai&apos;s most desirable addresses,
+              backed by trusted guidance, transparent pricing, and private viewings.
+            </p>
+          </div>
 
-          <div className="mt-10 flex flex-col items-stretch gap-4 sm:flex-row sm:items-center">
+          <div className="flex flex-col items-stretch gap-4 sm:flex-row sm:items-center md:justify-start">
             <Link
               href="/contact"
               className="inline-flex items-center justify-center rounded-full bg-brand-gold px-8 py-3.5 text-sm font-semibold uppercase tracking-[0.2em] text-brand-black shadow-[0_10px_30px_-12px_rgba(201,166,106,0.8)] transition-all duration-300 hover:bg-brand-gold/90"
@@ -52,7 +54,7 @@ export default function Hero() {
             </Link>
           </div>
 
-          <ul className="mt-10 flex flex-wrap justify-center gap-3 md:justify-start">
+          <ul className="flex flex-wrap justify-center gap-3 md:justify-start">
             <li className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.24em] text-white/80 backdrop-blur-md">
               <span className="h-2 w-2 rounded-full bg-brand-gold" />
               RERA Verified

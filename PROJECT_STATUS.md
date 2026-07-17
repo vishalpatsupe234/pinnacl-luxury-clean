@@ -33,7 +33,7 @@ original committed baseline._
 
 ## 3. Uncommitted Working-Tree Changes (Not Yet Committed, Not Approved)
 
-- `components/Hero.tsx`
+- `components/Hero.tsx` — Updated with refined grid structure per H001 (Hero Structure task)
 - `components/Navbar.tsx`
 - `next-env.d.ts`
 - Untracked: `current-changes.txt`

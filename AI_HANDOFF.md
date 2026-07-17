@@ -98,6 +98,7 @@ Iconography should be thin, premium, and minimal with consistent stroke weight; 
 - Copy refinement on marketing pages.
 - Non-destructive UX improvements in component documentation.
 - Metadata and schema validation.
+- Hero component structure refinement (H001 completed).
 
 ## Current Caution Areas
 - Do not modify the core hero, logo, or brand assets without approval.
