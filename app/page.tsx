@@ -10,16 +10,16 @@ import Footer from "@/components/Footer";
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://pinnaclproperties.com";
 
 export const metadata: Metadata = {
-  title: "Luxury Homes in Mumbai",
+  title: "Luxury Homes in Maharashtra",
   description:
-    "Discover handpicked luxury residential projects in Mumbai — RERA-verified, thoughtfully curated for lifestyle, legal clarity, and long-term value.",
+    "Discover handpicked luxury residential projects across Maharashtra — RERA-verified, thoughtfully curated for lifestyle, legal clarity, and long-term value.",
   alternates: {
     canonical: `${siteUrl}/`,
   },
   openGraph: {
-    title: "Pinnacl Properties | Luxury Homes in Mumbai",
+    title: "Pinnacl Properties | Luxury Homes in Maharashtra",
     description:
-      "Discover premium luxury residences in Mumbai with curated advisory, transparent guidance, and trusted project selection.",
+      "Discover premium luxury residences across Maharashtra with curated advisory, transparent guidance, and trusted project selection.",
     url: `${siteUrl}/`,
     type: "website",
     images: [
@@ -27,15 +27,15 @@ export const metadata: Metadata = {
         url: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80",
         width: 1200,
         height: 630,
-        alt: "Luxury homes in Mumbai",
+        alt: "Luxury homes in Maharashtra",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Pinnacl Properties | Luxury Homes in Mumbai",
+    title: "Pinnacl Properties | Luxury Homes in Maharashtra",
     description:
-      "Discover premium luxury residences in Mumbai with curated advisory, transparent guidance, and trusted project selection.",
+      "Discover premium luxury residences across Maharashtra with curated advisory, transparent guidance, and trusted project selection.",
     images: [
       "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80",
     ],

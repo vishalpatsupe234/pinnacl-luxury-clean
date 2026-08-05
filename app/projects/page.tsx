@@ -8,16 +8,16 @@ import Footer from "@/components/Footer";
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://pinnaclproperties.com";
 
 export const metadata: Metadata = {
-  title: "Projects",
+  title: "Projects | Pinnacl Properties",
   description:
-    "Explore our curated portfolio of luxury residential projects across Mumbai and premium locations.",
+    "Explore our curated portfolio of luxury residential projects across Maharashtra and premium locations.",
   alternates: {
     canonical: `${siteUrl}/projects`,
   },
   openGraph: {
     title: "Pinnacl Properties Projects",
     description:
-      "Explore a curated portfolio of luxury residential projects across Mumbai, selected for architecture, location, and long-term value.",
+      "Explore a curated portfolio of luxury residential projects across Maharashtra, selected for architecture, location, and long-term value.",
     url: `${siteUrl}/projects`,
     type: "website",
   },
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     card: "summary",
     title: "Pinnacl Properties Projects",
     description:
-      "Explore a curated portfolio of luxury residential projects across Mumbai, selected for architecture, location, and long-term value.",
+      "Explore a curated portfolio of luxury residential projects across Maharashtra, selected for architecture, location, and long-term value.",
   },
 };
 

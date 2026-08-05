@@ -7,9 +7,9 @@ import Footer from "@/components/Footer";
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://pinnaclproperties.com";
 
 export const metadata: Metadata = {
-  title: "About",
+  title: "About Pinnacl Properties",
   description:
-    "Learn about Pinnacl Properties — a luxury property advisory built on trust, simplicity, and transparency.",
+    "Learn about Pinnacl Properties — a luxury property advisory built on trust, simplicity, and transparency across Maharashtra.",
   alternates: {
     canonical: `${siteUrl}/about`,
   },

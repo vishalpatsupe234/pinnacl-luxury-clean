@@ -9,6 +9,7 @@ out/
 .env
 .env.local
 .env.production
+google-service-account.json
 
 # misc
 .DS_Store

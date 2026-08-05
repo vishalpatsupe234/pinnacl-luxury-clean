@@ -25,7 +25,8 @@ const organizationSchema = {
     "Pinnacl Properties is a luxury real estate advisory specializing in RERA-verified residences across Mumbai.",
   address: {
     "@type": "PostalAddress",
-    addressLocality: "Mumbai",
+    addressLocality: "Ambernath",
+    addressRegion: "Maharashtra",
     addressCountry: "IN",
   },
 };
@@ -45,18 +46,18 @@ const websiteSchema = {
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "Pinnacl Properties | Luxury Homes in Mumbai",
+    default: "Pinnacl Properties | Luxury Homes in Maharashtra",
     template: "%s | Pinnacl Properties",
   },
   description:
-    "Pinnacl Properties curates RERA-verified luxury residential projects across Mumbai — with clarity, credibility, and discretion.",
+    "Pinnacl Properties curates RERA-verified luxury residential projects across Maharashtra — with clarity, credibility, and discretion.",
   keywords: [
-    "Luxury homes Mumbai",
-    "Premium properties Mumbai",
+    "Luxury homes Maharashtra",
+    "Premium properties Maharashtra",
     "RERA verified projects",
-    "Mumbai real estate consultant",
-    "Luxury apartments Mumbai",
-    "Luxury residences Mumbai",
+    "Maharashtra real estate consultant",
+    "Luxury apartments Maharashtra",
+    "Luxury residences Maharashtra",
   ],
   alternates: {
     canonical: siteUrl,
@@ -66,7 +67,7 @@ export const metadata: Metadata = {
     follow: true,
   },
   openGraph: {
-    title: "Pinnacl Properties | Luxury Homes in Mumbai",
+    title: "Pinnacl Properties | Luxury Homes in Maharashtra",
     description:
       "Handpicked RERA-verified luxury residences curated for lifestyle, legal clarity, and long-term value.",
     url: siteUrl,
@@ -77,13 +78,13 @@ export const metadata: Metadata = {
         url: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80",
         width: 1200,
         height: 630,
-        alt: "Luxury residence in Mumbai",
+        alt: "Luxury residence in Maharashtra",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Pinnacl Properties | Luxury Homes in Mumbai",
+    title: "Pinnacl Properties | Luxury Homes in Maharashtra",
     description:
       "Handpicked RERA-verified luxury residences curated for lifestyle, legal clarity, and long-term value.",
     images: [

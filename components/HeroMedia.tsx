@@ -18,7 +18,7 @@ export default function HeroMedia({ type, src, alt = "" }: HeroMediaProps) {
         muted
         loop
         playsInline
-        preload="metadata"
+        preload="auto"
         aria-hidden="true"
       />
     );
@@ -32,7 +32,7 @@ export default function HeroMedia({ type, src, alt = "" }: HeroMediaProps) {
       priority
       fill
       sizes="100vw"
-      quality={90}
+      quality={75}
     />
   );
 }

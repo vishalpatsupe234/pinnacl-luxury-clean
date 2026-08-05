@@ -85,7 +85,7 @@ export default async function Page({ params }: Props) {
           }),
         }}
       />
-      <PropertyDetails property={data} />
+      <PropertyDetails property={data} slug={slug} />
     </main>
   );
 }
