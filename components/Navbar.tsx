@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const navItems = [
   { href: "/", label: "Home" },
@@ -17,12 +17,21 @@ export default function Navbar() {
   const isHome = pathname === "/";
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const tickingRef = useRef(false);
 
   useEffect(() => {
-    function onScroll() {
+    function applyScrollState() {
       setScrolled(window.scrollY > 60);
+      tickingRef.current = false;
     }
-    onScroll();
+
+    function onScroll() {
+      if (tickingRef.current) return;
+      tickingRef.current = true;
+      requestAnimationFrame(applyScrollState);
+    }
+
+    applyScrollState();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
@@ -38,21 +47,29 @@ export default function Navbar() {
       }`}
     >
       <div className="section-shell">
-        <nav className="flex items-center justify-between gap-4 h-16 md:h-20">
-          <Link href="/" className="select-none shrink-0">
-            <div className="flex items-center gap-3">
-              <Image
-                src="/logo/pinnacl-logo-transparent.png"
-                alt="Pinnacl Properties"
-                width={120}
-                height={44}
-                priority
-                className="h-9 w-auto md:h-14"
-              />
-            </div>
+        <nav className="relative flex items-center gap-4 h-16 md:h-20">
+          <Link
+            href="/"
+            aria-label="Pinnacl Properties home"
+            aria-hidden={!solid}
+            tabIndex={solid ? undefined : -1}
+            className={`select-none absolute inset-y-0 left-0 flex items-center transition-all duration-300 ease-out ${
+              solid
+                ? "opacity-100 translate-y-0 pointer-events-auto"
+                : "opacity-0 -translate-y-2 pointer-events-none"
+            }`}
+          >
+            <Image
+              src="/logo/pinnacl-logo-transparent.png"
+              alt="Pinnacl Properties"
+              width={120}
+              height={44}
+              priority
+              className="h-9 w-auto md:h-14"
+            />
           </Link>
 
-          <ul className="hidden md:flex items-center gap-8 lg:gap-10 flex-nowrap">
+          <ul className="ml-auto hidden md:flex items-center gap-8 lg:gap-10 flex-nowrap">
             {navItems.map((item) => (
               <li key={item.href}>
                 <Link
@@ -71,7 +88,7 @@ export default function Navbar() {
 
           <button
             onClick={() => setOpen(!open)}
-            className={`md:hidden p-2 transition-colors duration-300 ${
+            className={`ml-auto md:hidden p-2 transition-colors duration-300 ${
               solid ? "text-brand-black" : "text-white"
             }`}
             aria-label="Toggle menu"
