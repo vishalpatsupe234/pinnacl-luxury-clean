@@ -40,7 +40,8 @@ export default function LuxurySearchBar() {
             transition-all
             duration-300
             hover:bg-white/10
-            hover:border-white/80
+            hover:border-whit
+            e/80
           "
         >
           Explore Properties

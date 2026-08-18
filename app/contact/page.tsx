@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { TbMessages } from "react-icons/tb";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
@@ -136,7 +137,7 @@ export default function ContactPage() {
                     className="input-light resize-none"
                   />
 
-                  <div className="flex flex-col sm:flex-row items-center gap-4 pt-4">
+                  <div className="flex flex-col items-center gap-5 pt-4">
                     <button
                       type="submit"
                       disabled={loading}
@@ -148,9 +149,10 @@ export default function ContactPage() {
                       href={whatsappUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="btn-whatsapp w-full sm:w-auto"
+                      className="relative inline-flex items-center gap-1.5 text-xs font-light uppercase tracking-[0.15em] text-brand-gold/70 transition-colors duration-300 after:absolute after:inset-x-0 after:-bottom-1 after:h-px after:bg-brand-gold/40 after:transition-colors after:duration-300 hover:text-brand-gold hover:after:bg-brand-gold"
                     >
-                      WhatsApp Us
+                      <TbMessages size={16} strokeWidth={1.5} />
+                      Enquire
                     </a>
                   </div>
                 </form>

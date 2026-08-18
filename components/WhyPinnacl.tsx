@@ -1,4 +1,7 @@
+"use client";
+
 import { Diamond, Shield, Minimize2, Eye } from "lucide-react";
+import { motion, useReducedMotion } from "motion/react";
 
 const values = [
   {
@@ -28,6 +31,8 @@ const values = [
 ];
 
 export default function WhyPinnacl() {
+  const prefersReducedMotion = useReducedMotion();
+
   return (
     <section className="bg-white py-24 md:py-32 border-t border-brand-border">
       <div className="section-shell">
@@ -37,8 +42,19 @@ export default function WhyPinnacl() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12 md:gap-8">
-          {values.map((item) => (
-            <div key={item.title} className="text-center px-4">
+          {values.map((item, i) => (
+            <motion.div
+              key={item.title}
+              className="text-center px-4"
+              initial={prefersReducedMotion ? false : { opacity: 0, y: 20 }}
+              whileInView={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.2 }}
+              transition={{
+                duration: 0.6,
+                delay: i * 0.08,
+                ease: [0.22, 1, 0.36, 1],
+              }}
+            >
               <div className="inline-flex items-center justify-center w-12 h-12 mb-6">
                 <item.icon
                   size={24}
@@ -52,7 +68,7 @@ export default function WhyPinnacl() {
               <p className="text-sm font-light text-brand-muted leading-relaxed">
                 {item.description}
               </p>
-            </div>
+            </motion.div>
           ))}
         </div>
       </div>

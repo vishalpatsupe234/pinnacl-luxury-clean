@@ -9,16 +9,17 @@ export default function FloatingAction() {
       target="_blank"
       rel="noopener noreferrer"
       className="
-        fixed bottom-6 right-6 z-[999]
-        px-6 py-3 rounded-full
+        fixed z-[999]
+        w-[52px] h-[52px] md:w-14 md:h-14
+        bottom-4 right-4 md:bottom-6 md:right-6
+        rounded-full
         flex items-center justify-center
-        shadow-[0_6px_20px_rgba(0,0,0,0.3)]
-        bg-[radial-gradient(circle_at_0%_0%,#fff6da_0%,#f3d391_32%,#d2a049_100%)]
-        border border-white/50
-        hover:scale-110 transition
+        bg-brand-gold
+        text-brand-black
+        hover:-translate-y-0.5 transition-transform duration-180 ease-out
       "
     >
-      <FaRegComments size={26} className="text-black" />
+      <FaRegComments size={24} className="md:w-7 md:h-7" />
     </a>
   );
 }

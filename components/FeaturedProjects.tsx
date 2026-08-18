@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { motion, useReducedMotion } from "motion/react";
 
 type Property = {
   slug: string;
@@ -79,6 +80,7 @@ function PropertyCard({
 
 export default function FeaturedProjects({ items }: { items: Property[] }) {
   const featured = items.slice(0, 3);
+  const prefersReducedMotion = useReducedMotion();
 
   return (
     <section className="bg-white py-24 md:py-32">
@@ -93,11 +95,22 @@ export default function FeaturedProjects({ items }: { items: Property[] }) {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-8">
           {featured.map((property, i) => (
-            <PropertyCard
+            <motion.div
               key={property.slug}
-              property={property}
-              fallbackImage={FALLBACK_IMAGES[i % FALLBACK_IMAGES.length]}
-            />
+              initial={prefersReducedMotion ? false : { opacity: 0, y: 20 }}
+              whileInView={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.2 }}
+              transition={{
+                duration: 0.6,
+                delay: i * 0.08,
+                ease: [0.22, 1, 0.36, 1],
+              }}
+            >
+              <PropertyCard
+                property={property}
+                fallbackImage={FALLBACK_IMAGES[i % FALLBACK_IMAGES.length]}
+              />
+            </motion.div>
           ))}
         </div>
 

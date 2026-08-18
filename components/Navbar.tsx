@@ -1,15 +1,15 @@
-﻿"use client";
+"use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { motion, useReducedMotion } from "motion/react";
 
 const navItems = [
-  { href: "/", label: "Home" },
-  { href: "/projects", label: "Projects" },
-  { href: "/about", label: "About" },
-  { href: "/contact", label: "Contact" },
+  { href: "/", label: "Residences" },
+  { href: "/projects", label: "Collections" },
+  { href: "/about", label: "Our Story" },
+  { href: "/contact", label: "Enquire" },
 ];
 
 export default function Navbar() {
@@ -17,7 +17,9 @@ export default function Navbar() {
   const isHome = pathname === "/";
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [hovered, setHovered] = useState(false);
   const tickingRef = useRef(false);
+  const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
     function applyScrollState() {
@@ -36,48 +38,70 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const solid = !isHome || scrolled;
+  const onNonHomePage = !isHome;
+  const light = isHome; // Light background for mobile on home page
+  const solid = !isHome || scrolled; // Nav links visible when scrolled or on non-home page
+
+  // STATE 1: Top of hero (fully transparent)
+  // STATE 2: Scrolled, no hover (dark glass)
+  // STATE 3: Scrolled with hover (white frosted)
+  // STATE 4: Non-home page (white frosted)
+  const shouldShowWhiteGlass = (scrolled && hovered) || onNonHomePage;
+  const shouldShowDarkGlass = scrolled && !hovered && isHome;
+
+  const glassTransition = prefersReducedMotion
+    ? { duration: 0 }
+    : { duration: 0.3 };
 
   return (
-    <header
-      className={`fixed inset-x-0 top-0 z-50 transition-all duration-500 ${
-        solid
-          ? "bg-white border-b border-brand-black/5"
-          : "bg-transparent"
-      }`}
+    <motion.header
+      initial={false}
+      animate={{
+        backgroundColor: shouldShowWhiteGlass
+          ? "rgba(248,247,243,0.94)"
+          : shouldShowDarkGlass
+            ? "rgba(17,17,17,0.34)"
+            : "rgba(255,255,255,0)",
+        backdropFilter: shouldShowWhiteGlass
+          ? "blur(22px)"
+          : shouldShowDarkGlass
+            ? "blur(10px)"
+            : "blur(0px)",
+        borderColor: shouldShowWhiteGlass
+          ? "rgba(17,17,17,0.06)"
+          : "rgba(255,255,255,0)",
+      }}
+      style={{
+        WebkitBackdropFilter: shouldShowWhiteGlass
+          ? "blur(22px)"
+          : shouldShowDarkGlass
+            ? "blur(10px)"
+            : "blur(0px)",
+      }}
+      transition={glassTransition}
+      onMouseEnter={() => scrolled && setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      className="fixed inset-x-0 top-0 z-50 border-b"
     >
       <div className="section-shell">
-        <nav className="relative flex items-center gap-4 h-16 md:h-20">
-          <Link
-            href="/"
-            aria-label="Pinnacl Properties home"
+        <nav className="flex items-center gap-4 h-16 md:h-20">
+          <ul
             aria-hidden={!solid}
-            tabIndex={solid ? undefined : -1}
-            className={`select-none absolute inset-y-0 left-0 flex items-center transition-all duration-300 ease-out ${
+            className={`ml-auto hidden md:flex items-center gap-8 lg:gap-10 flex-nowrap transition-all duration-300 ease-out ${
               solid
                 ? "opacity-100 translate-y-0 pointer-events-auto"
                 : "opacity-0 -translate-y-2 pointer-events-none"
             }`}
           >
-            <Image
-              src="/logo/pinnacl-logo-transparent.png"
-              alt="Pinnacl Properties"
-              width={120}
-              height={44}
-              priority
-              className="h-9 w-auto md:h-14"
-            />
-          </Link>
-
-          <ul className="ml-auto hidden md:flex items-center gap-8 lg:gap-10 flex-nowrap">
             {navItems.map((item) => (
               <li key={item.href}>
                 <Link
                   href={item.href}
-                  className={`text-xs uppercase tracking-[0.2em] font-light transition-colors duration-300 ${
-                    solid
-                      ? "text-brand-black/70 hover:text-brand-black"
-                      : "text-white/80 hover:text-white"
+                  tabIndex={solid ? undefined : -1}
+                  className={`relative inline-block text-xs uppercase tracking-[0.2em] font-light transition-colors duration-300 [text-shadow:0_1px_4px_rgba(0,0,0,0.3)] after:content-[''] after:absolute after:left-1/2 after:-bottom-1 after:h-px after:w-0 after:-translate-x-1/2 after:bg-brand-gold after:transition-[width] after:duration-[240ms] after:ease-out hover:after:w-full ${
+                    shouldShowWhiteGlass
+                      ? "text-brand-black"
+                      : "text-white/90 hover:text-white/95"
                   }`}
                 >
                   {item.label}
@@ -88,8 +112,8 @@ export default function Navbar() {
 
           <button
             onClick={() => setOpen(!open)}
-            className={`ml-auto md:hidden p-2 transition-colors duration-300 ${
-              solid ? "text-brand-black" : "text-white"
+            className={`ml-auto md:hidden p-2 transition-colors duration-300 [text-shadow:0_1px_4px_rgba(0,0,0,0.3)] ${
+              shouldShowWhiteGlass ? "text-brand-black" : "text-white"
             }`}
             aria-label="Toggle menu"
           >
@@ -107,15 +131,15 @@ export default function Navbar() {
 
       {open && (
         <div
-          className={`md:hidden border-t ${
-            solid
-              ? "bg-white border-brand-black/5"
-              : "bg-brand-black/90 border-white/10"
+          className={`md:hidden border-t transition-colors duration-300 ${
+            light
+              ? "bg-brand-black/90 border-white/10"
+              : "bg-white/95 backdrop-blur-md border-brand-black/5"
           }`}
         >
           <ul
             className={`px-6 py-6 flex flex-col gap-4 ${
-              solid ? "text-brand-black" : "text-white/90"
+              light ? "text-white/90" : "text-brand-black"
             }`}
           >
             {navItems.map((item) => (
@@ -132,6 +156,6 @@ export default function Navbar() {
           </ul>
         </div>
       )}
-    </header>
+    </motion.header>
   );
 }

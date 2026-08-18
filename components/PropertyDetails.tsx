@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
+import { TbMessages } from "react-icons/tb";
 
 type Property = {
   title: string;
@@ -112,18 +113,19 @@ export default function PropertyDetails({
             {priceDisplay}
           </p>
 
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-col items-start gap-4">
+            <button type="button" className="btn-gold-outline">
+              Schedule Visit
+            </button>
             <a
               href="https://wa.me/91XXXXXXXXXX"
               target="_blank"
-              className="rounded-xl bg-[var(--color-brand-gold)] px-6 py-3 text-white font-medium"
+              rel="noopener noreferrer"
+              className="relative inline-flex items-center gap-1.5 text-xs font-light uppercase tracking-[0.15em] text-brand-gold/70 transition-colors duration-300 after:absolute after:inset-x-0 after:-bottom-1 after:h-px after:bg-brand-gold/40 after:transition-colors after:duration-300 hover:text-brand-gold hover:after:bg-brand-gold"
             >
+              <TbMessages size={16} strokeWidth={1.5} />
               WhatsApp Enquiry
             </a>
-
-            <button className="rounded-xl border px-6 py-3 font-medium">
-              Schedule Visit
-            </button>
           </div>
         </div>
       </div>
