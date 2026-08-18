@@ -4,7 +4,7 @@ _This file is the single permanent project memory and the operating manual for P
 
 _Every claim in this file is labeled **Implemented**, **Approved (architecture decision, not yet built)**, or **Planned/Vision**. Never assume a labeled item exists in running code without checking its label — §6, §7, §8, and §11 in particular describe target architecture, not shipped features._
 
-_Last compiled: 2026-08-17. Git HEAD at time of writing: `cbc6446f` on branch `stable`, with a large volume of uncommitted local changes — see §3 and §9. Always run `git status` before assuming what is actually deployed; nothing described as "Implemented" in this file has been committed since `cbc6446f`._
+_Last compiled: 2026-08-19. Git HEAD at time of writing: `79a91185` on branch `stable`, pushed to `origin/stable`. Three commits landed on top of the prior `cbc6446f` baseline: `158a7bae` (feat(ui): luxury homepage redesign), `9a6938fa` (feat(auth): invite-only broker authentication), `79a91185` (feat(properties): property listings CMS). Always run `git status` before assuming what is currently deployed — any work done after this compilation date may still be uncommitted; this file's "Implemented" labels describe code state, not commit/deploy state, and the two are verified separately._
 
 _Environment note: no Supabase CLI, `psql`, or Docker is available in this working environment. All Supabase/Postgres work in this file (schema migrations, RLS, and the broker authentication below) has been written and, where applicable, compiled/type-checked/built successfully — but migration files have never been executed against the live Supabase project from this environment, and cannot be until CLI/DB access exists. "Implemented" below means "implemented in application code and passes `npm run build`," not "confirmed running against the live database." Apply the SQL migrations manually (`supabase db push` or the Supabase Dashboard SQL editor) before relying on this in production._
 
@@ -38,7 +38,22 @@ _Environment note: no Supabase CLI, `psql`, or Docker is available in this worki
 - No gradients, glow effects, or "cheap UI" on interactive elements. **Currently violated live in `PropertyDetails.tsx` — see §9, Medium.**
 - No mass-market or listings-portal framing language ("browse our inventory") — prefer advisory framing ("begin a private consultation").
 
-**Current implementation stage:** MVP, pre-production. Homepage, `/about`, `/contact`, and `/projects` are genuinely polished; `/properties` and `/properties/[slug]` contain verified live bugs and off-brand styling (§9). Inventory is 3 placeholder listings in a static JSON file, not a real database (§7, Phase 1). The self-governance docs (`PROJECT_CONTEXT.md`, `DECISIONS.md`, `TASKS.md`) are stale since 2026-07-12 and not kept in sync with work completed after that date.
+**Current implementation stage:** MVP, pre-production. **Target architecture (approved direction): Supabase is the single source of truth for property data going forward.** `data/properties.json` is **legacy** — the format the public marketing site (`/`, `/about`, `/contact`, `/projects`, `/properties`, `/properties/[slug]`) still runs on today (3 placeholder listings, unchanged by any of the work below), not a permanent parallel architecture. The real Supabase-backed Property Listings CMS (`/admin/properties`, `/broker/properties`, its own `properties`/`builders` tables, RLS, and image storage — see §3 "Property Listings CMS") is the intended eventual replacement; the marketing site has not yet been migrated onto it, so today the legacy JSON file and the target Supabase schema exist side by side with no data flow between them (see §9 for this migration gap as tracked debt, not as accepted permanent design). Homepage, `/about`, `/contact`, and `/projects` are genuinely polished; `/properties` and `/properties/[slug]` contain verified live bugs and off-brand styling (§9) — both independent of, and unaffected by, the legacy-vs-target distinction above. The self-governance docs (`PROJECT_CONTEXT.md`, `DECISIONS.md`, `TASKS.md`) are stale since 2026-07-12 and not kept in sync with work completed after that date.
+
+### Architecture Vision — Two Products (Approved Vision, not implemented)
+
+**Pinnacl Properties** (this repository, current) — **B2C.** The luxury real estate brand described throughout this file: a consumer-facing marketing site and lead-generation funnel serving buyers, sellers, and investors evaluating premium properties.
+
+**Pinnacl Pro** (Approved Vision) — **B2B SaaS, verified brokers only.** A separate, broker-facing product: a broker operating system monetized by subscription rather than (or alongside) commission-sharing. Scope as approved:
+- CRM
+- AI Brochure (generation)
+- Landing Pages
+- Lead Management
+- Subscription-based recurring revenue
+
+**Hard separation rule:** buyers must never see Pro pricing, CRM, or subscription UI anywhere on the Pinnacl Properties (B2C, luxury) website. This is a brand-boundary rule, not merely a technical one — see DO NOT BREAK.
+
+**This is an Approved Vision, not an implemented feature.** Nothing describing Pinnacl Pro above exists in code today. Do not conflate it with work already built under Pinnacl Properties that shares similar names — the Property Listings CMS (§3) and the Lead Management work referenced elsewhere in this file are internal admin/broker tooling *for Pinnacl Properties itself*, not the packaged, sellable, subscription-based "Pinnacl Pro" product described here. Whether/how the two ever share code is undecided and not specified anywhere in this file — mark as UNKNOWN rather than assuming either a shared or fully separate codebase.
 
 ---
 
@@ -168,15 +183,23 @@ app/sitemap.ts, app/robots.ts   → metadata routes, no components
 app/api/properties/route.ts     → GET, no rendering
 app/api/leads/route.ts          → POST, no rendering
 
--- Broker/Admin authentication (new, see "Authentication" below) --
+-- Broker/Admin authentication (see "Authentication" below) --
 app/broker/login/page.tsx           → "/broker/login"          [no Navbar/Footer — standalone auth page]
 app/broker/accept-invite/page.tsx   → "/broker/accept-invite"  [no Navbar/Footer]
-app/broker/dashboard/page.tsx       → "/broker/dashboard"      [gated, no Navbar/Footer]
-app/admin/brokers/page.tsx          → "/admin/brokers"         [gated, no Navbar/Footer]
+app/broker/dashboard/page.tsx       → "/broker/dashboard"      [gated, no Navbar/Footer, links to /broker/properties]
+app/admin/brokers/page.tsx          → "/admin/brokers"         [gated, no Navbar/Footer, links to /admin/properties]
 app/api/admin/invites/route.ts      → GET/POST, no rendering
 app/api/broker/accept-invite/route.ts → GET/POST, no rendering
 app/api/admin/brokers/[id]/route.ts → PATCH, no rendering
 proxy.ts (project root)             → session-refresh, scoped to /broker/* and /admin/* only
+
+-- Property Listings CMS (see "Property Listings CMS" below) --
+app/admin/properties/page.tsx           → "/admin/properties"           [gated, no Navbar/Footer]
+app/broker/properties/page.tsx          → "/broker/properties"          [gated, no Navbar/Footer]
+app/broker/properties/[id]/page.tsx     → "/broker/properties/:id"      [gated, no Navbar/Footer, image carousel]
+app/api/admin/properties/route.ts       → GET/POST, no rendering
+app/api/admin/properties/[id]/route.ts  → GET/PATCH/DELETE, no rendering
+app/api/broker/properties/route.ts      → GET, no rendering
 ```
 
 ### Authentication (Implemented, code-level — see environment note above)
@@ -188,7 +211,7 @@ Real Supabase Auth-backed authentication now exists, strictly scoped to the invi
 - `server.ts` — server client for Server Components/Route Handlers (anon key + cookies via `@supabase/ssr`; access control comes from RLS, not this client).
 - `admin.ts` — **service-role client. Used in exactly one place in the codebase** (`app/api/broker/accept-invite/route.ts`'s account-creation step) — guarded with the `server-only` package so importing it from any client-reachable file is a build-time error, not just a convention. `SUPABASE_SERVICE_ROLE_KEY` (no `NEXT_PUBLIC_` prefix) lives only in `.env.local`.
 - `getSessionProfile.ts` — shared helper (current user + their `profiles` row), reused by every gated page/route instead of re-implementing the check per file.
-- `types.ts` — hand-written `Database` type (no Supabase CLI available to generate it). Only `profiles` and `invites` are fully typed; the other 6 business-data tables from the Curated Broker Network migration are typed generically since this task didn't touch them. Regenerate properly once CLI access exists.
+- `types.ts` — hand-written `Database` type (no Supabase CLI available to generate it). Fully typed: `profiles`, `invites` (broker-auth), `properties`, `builders` (Property Listings CMS). `leads`, `site_visits` were also typed during later Lead Management CRM work, outside this documentation pass's scope. `deals`, `commission_ledger`, `audit_log` remain typed generically since no task has touched them yet. Regenerate properly once CLI access exists.
 
 **Flow:** Super Admin (`/admin/brokers`) creates an invite (email + role) → a random 32-byte token is stored in `invites`, 7-day expiry → admin shares the resulting link manually (no email-sending was built — out of scope) → broker visits `/broker/accept-invite?token=...`, sets a password → the accept-invite Route Handler (service role) creates the real `auth.users` record and a `profiles` row with `status: 'pending_approval'` → broker cannot reach `/broker/dashboard` until Super Admin approves them via `/admin/brokers` (flips `status` to `active`, or `rejected`) → `/broker/login` is the single shared sign-in page for both brokers and admins, redirecting by role after `signInWithPassword`.
 
@@ -198,7 +221,21 @@ Real Supabase Auth-backed authentication now exists, strictly scoped to the invi
 
 **Next.js 16 note:** `middleware.ts` is deprecated in favor of `proxy.ts` (same behavior, renamed file + exported function). This project now uses `proxy.ts`.
 
-**Explicitly out of scope for this task, still Planned:** properties, deals, commission ledger, and payments are not wired to any UI — `/broker/dashboard` is a placeholder that only proves the approval-gate works.
+**Explicitly out of scope for this task, still Planned:** deals, commission ledger, and payments are not wired to any UI. `/broker/dashboard` remains a mostly-placeholder page — it proves the approval-gate works and now links to `/broker/properties`, but no lead/commission functionality lives there yet (see §3 "Property Listings CMS" below and the Lead Management CRM work, which is a separate, later phase not covered by this documentation pass).
+
+### Property Listings CMS (Implemented, code-level — see environment note above)
+
+A real Supabase-backed property management system now exists, layered on top of the `properties`/`builders` tables from the original Curated Broker Network migration. **This is a separate system from the public marketing site** — `data/properties.json` and the `/properties` marketing pages are untouched and unaware this CMS exists (see §1).
+
+**Schema (`supabase/migrations/20260818100000_property_listings_module.sql`):** extends the existing `properties` table (doesn't duplicate it) with `property_type`, `bedrooms`, `bathrooms`, `area_sqft`. Adds indexes on `city`, `project_status`, `property_type`. Adds one new RLS policy, `properties_broker_read_all` (any active broker/sales_partner can `SELECT` every property, read-only) — additive on top of the original migration's policies, none of which were changed. Adds a public-read `property-images` Supabase Storage bucket, writes restricted to `super_admin`.
+
+**Admin (`/admin/properties`):** full CRUD — list with search (title/city) + status filter, create/edit form with drag-and-drop multi-image upload (direct browser-to-Storage, RLS-gated, no server route in the middle), a Builder dropdown populated from the `builders` table (with a "+ Add New Builder" get-or-create fallback), an inline Featured toggle, and soft-delete with an inline confirm step. Deletes set `deleted_at` — no hard delete, consistent with the schema's existing convention.
+
+**Broker (`/broker/properties`):** read-only — search + city/type/status filters, responsive card grid, and a dedicated detail page (`/broker/properties/[id]`) with a real image carousel (prev/next, dot indicators, thumbnail strip). Relies entirely on the `properties_broker_read_all` RLS policy; the route itself performs no writes.
+
+**Field-name reconciliation (documented in the migration, not invented after the fact):** the module's originally-requested `status`/`featured`/`builder`/`images` fields map onto the table's pre-existing `project_status`/`is_featured`/`builder_id` (FK)/`images` (jsonb) columns rather than adding redundant new ones.
+
+**Known, deliberately untouched gap:** the original migration also grants a broker INSERT/UPDATE on their *own* pending listings (`properties_broker_insert_own`/`properties_broker_update_own_pending`) — a leftover from the earlier "broker uploads their own inventory" vision. The CMS's own UI never exercises that path (broker access is read-only end-to-end in the built UI), but the RLS capability itself is still live underneath. Not revoked, since doing so wasn't requested and touching existing policies carries its own risk.
 
 ---
 
@@ -214,7 +251,10 @@ Real Supabase Auth-backed authentication now exists, strictly scoped to the invi
 - **`app/broker/`, `app/admin/`** — the invite-only broker/admin authentication routes. See §3 "Authentication."
 - **`app/api/admin/`, `app/api/broker/`** — Route Handlers backing the auth flow. See §3 "Authentication."
 - **`proxy.ts`** (project root) — Next.js 16's renamed `middleware.ts` convention; scoped to `/broker/*` and `/admin/*` only via `config.matcher`.
-- **`supabase/`** — `migrations/` (4 files: the original 8-table Curated Broker Network schema, then the broker-auth extension) and `seed.sql`. Never executed against the live project from this environment — see the environment note at the top of this file.
+- **`supabase/`** — `migrations/` (5 files: the original 8-table Curated Broker Network schema, the broker-auth extension, then the Property Listings CMS extension — see §3 "Property Listings CMS") and `seed.sql`. Never executed against the live project from this environment — see the environment note at the top of this file.
+- **`app/admin/properties/`, `app/broker/properties/`** — the Property Listings CMS routes. See §3 "Property Listings CMS."
+- **`app/api/admin/properties/`, `app/api/broker/properties/`** — Route Handlers backing the CMS.
+- **`lib/supabase/propertyImages.ts`** — client-side Storage upload helper used by the admin CMS form; RLS (not this file) restricts writes to `super_admin`.
 - **`data/`** — `data/properties.json`, the single source of truth for property inventory: **3 placeholder listings (Pinnacl Crest, Aurelia, Bayview), not a real database.** `priceDisplay` fields currently render mojibake (`â‚¹` instead of `₹`) on every listing.
 - **`public/`** — Static assets:
 
@@ -270,11 +310,11 @@ Real Supabase Auth-backed authentication now exists, strictly scoped to the invi
 
 ## 6. Business Architecture — Community Brokerage System
 
-**Status: Approved long-term direction, mostly still design specification.** As of 2026-08-17, the invite-only account/approval mechanics (Access Policy below) are real, working code — see §3 "Authentication." Property ownership, lead ownership, site visit logs, deal closure, and the commission ledger remain Planned/schema-only (migrated as SQL but not wired to any UI). Check each subsection's own status label below rather than assuming the whole section is either fully built or fully unbuilt.
+**Status: Approved long-term direction, partially real.** The invite-only account/approval mechanics (Access Policy below) are real, working code — see §3 "Authentication." Property ownership is also real at the schema/CMS level — see §3 "Property Listings CMS" and the subsection below. Lead ownership, site visit logs, deal closure, and the commission ledger remain Planned/schema-only (migrated as SQL but not wired to any UI). Check each subsection's own status label below rather than assuming the whole section is either fully built or fully unbuilt.
 
 ### Roles (schema exists; enforcement partially Implemented — see §3)
 - **Super Admin** — the sole proprietor; ultimate authority over approvals, permissions, and platform configuration. **Implemented**: gates `/admin/brokers`.
-- **Verified Agent** (`profiles.role = 'verified_broker'` in code) — invited, manually approved; lists and manages properties, receives assigned leads. **Implemented**: account creation + approval gate. **Planned**: listing/lead functionality itself.
+- **Verified Agent** (`profiles.role = 'verified_broker'` in code) — invited, manually approved; lists and manages properties, receives assigned leads. **Implemented**: account creation + approval gate; read-only browsing of the property catalogue (`/broker/properties`, see §3 "Property Listings CMS"). **Planned**: broker-initiated listing creation/management (the built CMS is currently admin-managed, not broker-self-upload) and lead functionality.
 - **Builder Partner** — invited, manually approved; supplies inventory under their own identity. **Planned** — no distinct Builder Partner account type exists yet; only `verified_broker`/`sales_partner`/`viewer`/`super_admin` are real roles in the `profiles.role` check constraint.
 - **Viewer** — public-facing, unauthenticated; browses and enquires, no account required. Unchanged, always true.
 
@@ -284,15 +324,15 @@ Real Supabase Auth-backed authentication now exists, strictly scoped to the invi
 - **Manual approval only** — accepting an invite creates an account in `status: pending_approval`; `/broker/dashboard` is unreachable until Super Admin flips it to `active` via `/admin/brokers`.
 - **Quality-first onboarding** — enforced today only as an approve/reject gate, not yet the fuller KYC/interview workflow described below.
 
-### Property Ownership (Planned)
-Every property record must permanently store:
-- Listing ID
-- Uploaded By (Agent or Builder identity)
-- Builder (if applicable)
-- Created Date
-- Verification Status
+### Property Ownership (**Implemented at the schema/CMS level** — see §3 "Property Listings CMS")
+Every property record permanently stores:
+- Listing ID (`properties.id`)
+- Uploaded By (`source_broker_id`, references `profiles`)
+- Builder, if applicable (`builder_id`, references `builders`)
+- Created Date (`created_at`)
+- Verification Status (`approval_status`)
 
-**Ownership cannot silently transfer.** Any change of uploader/owner on a listing must be an explicit, logged action, never an implicit side effect of another operation.
+**Ownership cannot silently transfer** — enforced by a database trigger (`enforce_source_broker_immutable`), not just documented intent: any `UPDATE` attempting to change `source_broker_id` raises an exception. **Caveat:** the currently-built admin CMS is centrally admin-managed (admin creates/edits every listing, `source_broker_id` is set to the admin's own id at creation) rather than brokers uploading their own inventory under this ownership model — the schema and immutability guarantee are real, but the "broker uploads, ownership tracked" workflow this section originally envisioned isn't the CMS's current primary flow.
 
 ### Lead Ownership (Planned)
 Every enquiry must create a record with:
@@ -324,15 +364,15 @@ Split percentages are intentionally **not specified in this file** — they rema
 
 **Phase 1 — Current (Implemented):** `data/properties.json`, a static file with 3 placeholder listings. No schema, no migrations, no concurrent-write safety. This is the actual state of "the database" today — not a database in any real sense.
 
-**Phase 2 (Planned):**
-- Migrate to Supabase (or an equivalent Postgres-backed platform).
-- Real authentication, backing §6's Roles/Access Policy.
-- File/image storage for property photos and future agent/builder uploads.
+**Phase 2 (Implemented, code-level — see environment note at the top of this file):**
+- Migrated to Supabase — real Postgres-backed schema exists (`supabase/migrations/`, 5 files).
+- Real authentication, backing §6's Roles/Access Policy — see §3 "Authentication."
+- File/image storage — `property-images` Supabase Storage bucket (public read, admin-only write). Scoped to property photos only so far; not yet extended to a general agent/builder upload flow.
 
-**Phase 3 (Planned):**
-- Admin CMS for non-technical property management.
-- Agent dashboard (assigned leads, own listings, site-visit logging).
-- Builder dashboard (inventory submission, verification-status tracking).
+**Phase 3 (Partially Implemented):**
+- Admin CMS for non-technical property management — **Implemented**, see §3 "Property Listings CMS" (`/admin/properties`).
+- Agent dashboard (assigned leads, own listings, site-visit logging) — **Partially Implemented**: `/broker/properties` (read-only listing browse) exists; assigned-leads functionality and site-visit logging are not yet wired to any UI (Planned).
+- Builder dashboard (inventory submission, verification-status tracking) — **Planned.** No distinct Builder Partner account type or dashboard exists; the `builders` table exists and is populated via the admin CMS's get-or-create-by-name flow, not by builders themselves.
 
 **Scale phase (Planned):**
 - Geographic expansion beyond the current Ambernath-stage market toward broader Maharashtra (DEC-003's documented growth path — Ambernath → MMR → Maharashtra).
@@ -343,7 +383,7 @@ Split percentages are intentionally **not specified in this file** — they rema
 
 # Curated Broker Network (Long-Term Business Architecture)
 
-**Status: Planned. Nothing in this section exists in code today.** This section documents the long-term business architecture the founder has approved for Pinnacl's evolution beyond its current single-advisor lead-generation website — into a curated network of verified brokers collaborating under one brand. It complements §6 (Business Architecture — Community Brokerage System) with broker-specific detail; every item below is a specification for future work, not a description of anything running.
+**Status: Mostly Planned, with three subsections now real** (§2 Invite-Only Broker System, §3 User Roles — both since the 2026-08-17 auth work; §4 Property Ownership Logic — since the Property Listings CMS). This section documents the long-term business architecture the founder has approved for Pinnacl's evolution beyond its current single-advisor lead-generation website — into a curated network of verified brokers collaborating under one brand. It complements §6 (Business Architecture — Community Brokerage System) with broker-specific detail. Check each subsection's own status label — do not assume the whole section is either fully built or fully unbuilt.
 
 ### 1. Business Model (Planned)
 
@@ -369,15 +409,15 @@ Admin → reviews candidate → KYC verification → interview / quality review 
 | Role | Can | Cannot |
 |---|---|---|
 | Super Admin | **Implemented:** approve/reject broker applications; create invites; sign in via `/broker/login`, redirected to `/admin/brokers`. **Planned:** view the complete commission ledger; configure commission split ratios; edit any property's approval status; access the full audit trail | — (there is exactly one Super Admin: the founder) |
-| Verified Broker | **Implemented:** create an account via invite; sign in; see a "pending approval" or "active" dashboard state. **Planned:** upload properties; manage listings; receive attributed leads; view own earnings and deal history | Cannot self-register; cannot view other brokers' earnings or ledger entries (RLS-enforced once those tables are wired to a UI); cannot approve their own uploads; cannot transfer property ownership |
+| Verified Broker | **Implemented:** create an account via invite; sign in; see a "pending approval" or "active" dashboard state; browse the full property catalogue read-only (`/broker/properties`). **Planned:** upload/manage own listings (the CMS is currently admin-managed, not broker-self-upload); receive attributed leads; view own earnings and deal history | Cannot self-register; cannot view other brokers' earnings or ledger entries (RLS-enforced once those tables are wired to a UI); cannot approve their own uploads; cannot transfer property ownership |
 | Sales Partner | **Implemented at the account/role level** — `invites.role`/`profiles.role` accept `sales_partner` identically to `verified_broker`; the two are not yet functionally differentiated anywhere. **Planned:** the actual permission distinction UNKNOWN — not yet specified by the founder | Exact scope TBD beyond account creation — do not assume any capability for this role until it is explicitly defined |
 | Viewer | Browse public listings; submit enquiries | No account, no dashboard access, no visibility into broker/commission data |
 
-### 4. Property Ownership Logic (Planned)
+### 4. Property Ownership Logic (**Implemented at the schema/CMS level** — see §3 "Property Listings CMS")
 
-Every property must permanently store: Property ID, Uploading Broker, Builder/Developer, RERA Number, Project Status, Upload Date, Approval Status.
+Every property permanently stores: Property ID, Uploading Broker (`source_broker_id`), Builder/Developer (`builder_id`), RERA Number (`rera_number`), Project Status (`project_status`), Upload Date (`created_at`), Approval Status (`approval_status`).
 
-**Important rule:** the uploading broker always remains the **Source Broker.** This ownership never changes, even if another broker later sells the property. (Extends §6's "Property Ownership" principle with broker-specific fields — RERA Number, Project Status.)
+**Important rule:** the uploading broker always remains the **Source Broker.** This ownership never changes, even if another broker later sells the property — enforced by a real database trigger, not just convention. (Extends §6's "Property Ownership" principle with broker-specific fields — RERA Number, Project Status.) **Same caveat as §6:** the built CMS is currently admin-managed rather than broker-self-upload, so this guarantee exists and is enforced, but isn't yet exercised by brokers uploading their own inventory.
 
 ### 5. Deal Attribution Workflow (Planned)
 
@@ -405,9 +445,9 @@ Brokers can see only their own earnings. Admin can see the complete ledger.
 
 (Consistent with — and a broker-specific extension of — §8's "no hard delete" and "full audit trail" principles.)
 
-### 8. Search Vision (Planned — Phase 2)
+### 8. Search Vision (Planned — Phase 2; **partially prefigured** by the Property Listings CMS)
 
-Users should be able to search by: City, Locality, Builder, Project, Budget, BHK, Ready / Under Construction.
+Users should be able to search by: City, Locality, Builder, Project, Budget, BHK, Ready / Under Construction. The CMS's admin/broker property lists already support search-by-title/city plus filters for city, property type, and status (§3 "Property Listings CMS") — a genuine subset of this vision, not the full spec (no Builder-name filter, no budget range, no BHK filter yet, and this is internal CMS tooling, not the public-facing search this vision describes).
 
 **Future recommendation engine (Phase 2):** when viewing a property, suggest nearby branded projects within the same locality and budget range. Extends §7's Scale-phase "geo-coordinate storage + nearby-property search" item with a business-level recommendation framing.
 
@@ -462,7 +502,8 @@ _Verified by direct code inspection and grep during the 2026-08-16 audit. Fully 
 - **DEC-011-adjacent blanket claim in `Footer.tsx`:** "RERA Registered · Verified Projects Only" as a site-wide statement in every page's footer — the same category of claim a site-wide RERA badge was previously removed from the Hero for.
 - **`/properties` filter panel is functionally unstyled:** `PropertiesList.tsx` uses `card-surface`, `btn-primary-hero`, `btn-outline` — none of these classes exist in `globals.css` (confirmed by grep). The site's primary browse surface currently renders without its intended styling.
 - **`/api/leads` has no rate-limiting, input validation, or sanitization** — an open, unrate-limited public write endpoint with an HTML-injection path into the owner's outbound notification email.
-- **Nothing has been committed to git since `cbc6446f`.** The redesigned Navbar, the full motion system, Lenis, and this file itself all exist only as local uncommitted changes.
+- ~~Nothing has been committed to git since `cbc6446f`~~ — **RESOLVED.** Three commits now exist on `origin/stable`: `158a7bae` (UI redesign), `9a6938fa` (broker auth), `79a91185` (property CMS). Always re-verify via `git status`/`git log` before assuming this stays current, per this file's own standing rule.
+- **New: the public marketing site has not yet been migrated onto the approved Supabase target architecture.** `data/properties.json` is legacy (see §1) — the public site (`/`, `/projects`, `/properties`, `/properties/[slug]`) still reads from it, while the new Property Listings CMS (`/admin/properties`, `/broker/properties`) already runs on the real Supabase `properties` table, which is the approved single source of truth going forward. Neither currently reads from nor writes to the other — a listing created in the CMS does not appear on the public site, and vice versa. This was a deliberate, scoped choice when the CMS was built (not a bug, and not a decision still pending — the target direction is decided), but the migration itself hasn't happened yet: the public site still needs to be moved off the legacy JSON file and onto Supabase.
 
 **Medium:**
 - `--color-brand-soft`, referenced twice in `PropertyDetails.tsx`, does not exist anywhere in `globals.css` — badge and card backgrounds render broken.
@@ -536,6 +577,8 @@ _Verified by direct code inspection and grep during the 2026-08-16 audit. Fully 
 | **Production invite-only broker authentication implemented**: real Supabase Auth wired in (`@supabase/supabase-js`, `@supabase/ssr`, `server-only`); `profiles` extended (added `rejected` status) rather than creating a duplicate `broker_profiles` table; new `invites` table with admin-only RLS; `/broker/login`, `/broker/accept-invite`, `/broker/dashboard` (gated placeholder), `/admin/brokers` (approve/reject + invite UI) all built and passing `npm run build`. Properties, deals, and commissions explicitly out of scope, per the task's own instruction | **Implemented** (code-level — migrations not yet applied to the live Supabase project from this environment; see the environment note at the top of this file) | Direct owner instruction, 2026-08-17. Owner supplied live Supabase URL/publishable key directly; the assistant stopped and explicitly asked before using the service-role key, which the owner then added to `.env.local` themselves |
 | **Service-role key usage restricted to a single Route Handler** (`app/api/broker/accept-invite/route.ts`) — every other admin action (creating invites, approving/rejecting brokers) goes through the caller's own authenticated session and RLS, not the service role, on a least-privilege basis | Approved, Implemented | Architecture decision made during the 2026-08-17 broker-auth implementation |
 | **`middleware.ts` renamed to `proxy.ts`** per Next.js 16's deprecation of the `middleware` file convention (same behavior; exported function renamed `middleware` → `proxy`) | Implemented | Discovered as a build warning during the 2026-08-17 broker-auth implementation; fixed in the same session |
+| **Property Listings CMS implemented**: extended the existing `properties`/`builders` tables (added `property_type`/`bedrooms`/`bathrooms`/`area_sqft`, indexes on `city`/`project_status`/`property_type`); added the `properties_broker_read_all` RLS policy (additive, no existing policy changed) and a public-read/admin-write `property-images` Storage bucket. Built `/admin/properties` (full CRUD, drag-and-drop image upload, Builder dropdown with get-or-create, inline Featured toggle, soft-delete with confirm) and `/broker/properties` + `/broker/properties/[id]` (read-only, search/filter, image carousel). Deliberately kept as a separate system from the public marketing site's `data/properties.json` — no migration of the public site was in scope | **Implemented** (code-level — migrations not yet applied to the live Supabase project from this environment; see the environment note at the top of this file) | Direct owner instruction across three phased sub-tasks, each stopped and verified (`npm run lint` + `npm run build`) before proceeding to the next |
+| **Three-commit milestone created and pushed to `origin/stable`**: `158a7bae` (feat(ui): luxury homepage redesign), `9a6938fa` (feat(auth): invite-only broker authentication), `79a91185` (feat(properties): property listings CMS) — grouped by feature area at the owner's explicit direction, with `hello.py`/`hello3.py`/`roo-test.txt`/`tsconfig.tsbuildinfo` deliberately excluded from all three | Implemented | Direct owner instruction: a git safety audit was run first (confirming no secrets were staged), then three explicit commits, then an explicit `git push origin stable` |
 
 _(Rows above the 2026-08-16 entries predate this file's dating convention and are not retroactively dated — do not invent dates for them.)_
 
@@ -556,6 +599,7 @@ None of the systems this vision depends on — authentication, real inventory st
 ## DO NOT BREAK
 
 - Never introduce loud gradients, neon colors, or glow effects on any interactive element. **A live violation currently exists in `PropertyDetails.tsx` — see §9.**
+- Never show Pinnacl Pro pricing, CRM, or subscription UI anywhere on the Pinnacl Properties (B2C, luxury) website — the two products are hard-separated by audience (buyers/sellers/investors vs. verified brokers only). This is a brand-boundary rule, not merely a technical one. See §1, "Architecture Vision — Two Products."
 - Never use playful/heavy rounded UI (bubble buttons, cartoonish shapes).
 - Never let gold become a dominant or decorative color — accent only (DEC-009).
 - Never add a site-wide or generic RERA badge — property-specific and verified only (DEC-011). **A live violation currently exists in `Footer.tsx` — see §9.**
