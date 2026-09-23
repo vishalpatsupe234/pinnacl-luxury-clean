@@ -9,10 +9,23 @@
 // (no NEXT_PUBLIC_ prefix) is never exposed to Next.js's client
 // bundle by design.
 //
-// Used in exactly one place in this codebase: the broker
-// accept-invite Route Handler, which must create a real
-// auth.users record for an unauthenticated visitor — an operation
-// no RLS policy can grant, since the visitor has no session yet.
+// Used in exactly two places in this codebase, both Route Handlers,
+// both for operations no RLS policy can grant to the caller:
+//
+//   1. app/api/broker/accept-invite/route.ts — creates a real
+//      auth.users record for an unauthenticated visitor, who has no
+//      session for any policy to evaluate.
+//
+//   2. app/api/leads/route.ts — resolves a property slug to its id so
+//      a website enquiry can be attributed, without depending on
+//      anonymous SELECT over public.properties. That read is narrowed
+//      in the query itself (id only, approved, not soft-deleted) and
+//      the result never leaves the server.
+//
+// Each addition to this list is an explicit least-privilege decision,
+// not a convenience. Prefer the caller's own session and RLS
+// (lib/supabase/server.ts) unless the operation genuinely cannot be
+// expressed as a policy.
 
 import "server-only";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
