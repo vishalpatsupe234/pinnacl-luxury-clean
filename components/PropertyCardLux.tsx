@@ -4,6 +4,7 @@
 import Image from "next/image";
 import React from "react";
 import Link from "next/link";
+import { resolvePropertyImageUrl } from "@/lib/supabase/propertyImageUrl";
 
 type Props = {
   img: string;
@@ -18,6 +19,8 @@ export default function PropertyCardLux({ img, slug, tag, title, location, price
   // use encodeURIComponent to make slug safe for URL
   const detailsHref = slug ? `/properties/${encodeURIComponent(slug)}` : "#";
 
+  const imageUrl = resolvePropertyImageUrl(img);
+
   return (
     <article
       className="property-card-lux group relative overflow-hidden rounded-2xl shadow-xl transition-transform duration-300 will-change-transform"
@@ -27,7 +30,7 @@ export default function PropertyCardLux({ img, slug, tag, title, location, price
       {/* image */}
       <div className="img-wrap relative h-56 md:h-60 overflow-hidden rounded-t-2xl">
         <Image
-          src={img}
+          src={imageUrl}
           alt={title}
           width={400}
           height={300}

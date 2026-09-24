@@ -14,7 +14,7 @@ const values = [
     icon: Shield,
     title: "Trust",
     description:
-      "RERA-registered projects only. Full transparency on documentation, pricing, and developer credentials.",
+      "Documentation, pricing, and developer credentials reviewed and shared transparently — property by property, never assumed.",
   },
   {
     icon: Minimize2,

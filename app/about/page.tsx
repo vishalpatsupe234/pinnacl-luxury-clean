@@ -52,10 +52,10 @@ export default function AboutPage() {
                   entirely personal.
                 </p>
                 <p>
-                  Every project in our portfolio is RERA-registered and
-                  personally verified. We don&apos;t list everything — we
-                  curate only what meets our standards for quality, location,
-                  and long-term value.
+                  Where we hold a project&apos;s MahaRERA registration number,
+                  we publish it on the listing so you can check it yourself on
+                  the MahaRERA portal. We don&apos;t list everything — we take
+                  on only what fits the kind of advisory work we do.
                 </p>
                 <p>
                   Our approach is simple: understand what you truly need,
@@ -64,18 +64,15 @@ export default function AboutPage() {
                 </p>
               </div>
 
-              <div className="mt-12 grid grid-cols-3 gap-8">
+              <div className="mt-12 grid grid-cols-1 sm:grid-cols-3 gap-8">
                 {[
-                  { value: "50+", label: "Projects Curated" },
-                  { value: "100%", label: "RERA Verified" },
-                  { value: "6", label: "Markets Served" },
-                ].map((stat) => (
-                  <div key={stat.label}>
-                    <p className="font-serif text-2xl md:text-3xl text-brand-gold">
-                      {stat.value}
-                    </p>
-                    <p className="mt-1 text-xs uppercase tracking-[0.15em] text-brand-muted font-light">
-                      {stat.label}
+                  "Curated, Not Listed",
+                  "Registration Numbers Published",
+                  "Personal, One-to-One Advisory",
+                ].map((label) => (
+                  <div key={label}>
+                    <p className="font-serif text-lg md:text-xl text-brand-gold">
+                      {label}
                     </p>
                   </div>
                 ))}

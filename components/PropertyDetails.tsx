@@ -1,26 +1,36 @@
 ﻿"use client";
 
-import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { TbMessages } from "react-icons/tb";
+import PropertyGallery from "./PropertyGallery";
+import ReraDisclosure from "./ReraDisclosure";
 
 type Property = {
   title: string;
-  location?: {
-    area?: string;
-    city?: string;
-  };
-  priceDisplay?: string;
-  images?: string[];
+  city?: string | null;
+  locality?: string | null;
+  price_display?: string | null;
   highlights?: string[];
-  isFeatured?: boolean;
+  is_featured?: boolean;
+  bedrooms?: number | null;
+  area_sqft?: number | null;
+  project_status?: string | null;
+  rera_number?: string | null;
+};
+
+const POSSESSION_LABELS: Record<string, string> = {
+  ready_to_move: "Ready Possession",
+  under_construction: "Under Construction",
+  sold_out: "Sold Out",
 };
 
 export default function PropertyDetails({
   property,
+  images = [],
   slug,
 }: {
   property: Property;
+  images?: string[];
   slug?: string;
 }) {
   const [name, setName] = useState("");
@@ -29,6 +39,45 @@ export default function PropertyDetails({
   const [message, setMessage] = useState("");
   const [enquirySubmitted, setEnquirySubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showStickyBar, setShowStickyBar] = useState(false);
+
+  const galleryRef = useRef<HTMLDivElement>(null);
+  const enquiryRef = useRef<HTMLDivElement>(null);
+  const pastHeroRef = useRef(false);
+  const enquiryVisibleRef = useRef(false);
+
+  useEffect(() => {
+    const galleryEl = galleryRef.current;
+    const enquiryEl = enquiryRef.current;
+    if (!galleryEl || !enquiryEl) return;
+
+    const updateVisibility = () => {
+      setShowStickyBar(pastHeroRef.current && !enquiryVisibleRef.current);
+    };
+
+    const heroObserver = new IntersectionObserver(
+      ([entry]) => {
+        pastHeroRef.current = !entry.isIntersecting;
+        updateVisibility();
+      },
+      { threshold: 0 }
+    );
+    const enquiryObserver = new IntersectionObserver(
+      ([entry]) => {
+        enquiryVisibleRef.current = entry.isIntersecting;
+        updateVisibility();
+      },
+      { threshold: 0 }
+    );
+
+    heroObserver.observe(galleryEl);
+    enquiryObserver.observe(enquiryEl);
+
+    return () => {
+      heroObserver.disconnect();
+      enquiryObserver.disconnect();
+    };
+  }, []);
 
   async function handleEnquirySubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -42,7 +91,7 @@ export default function PropertyDetails({
           phone,
           email,
           message,
-          location: property.location?.area || property.location?.city || "",
+          location: property.locality || property.city || "",
           propertyId: slug || "",
         }),
       });
@@ -68,33 +117,30 @@ export default function PropertyDetails({
 
   const {
     title,
-    location,
-    priceDisplay,
-    images = [],
+    city,
+    locality,
+    price_display,
     highlights = [],
-    isFeatured,
+    is_featured,
+    bedrooms,
+    area_sqft,
+    project_status,
+    rera_number,
   } = property;
 
   return (
+    <>
     <section className="section-shell py-16">
       {/* HERO */}
       <div className="grid lg:grid-cols-2 gap-12 items-start">
         {/* IMAGE */}
-        <div className="relative w-full h-[420px] rounded-2xl overflow-hidden bg-gray-100">
-          {images[0] && (
-            <Image
-              src={images[0]}
-              alt={title}
-              fill
-              priority
-              className="object-cover"
-            />
-          )}
+        <div ref={galleryRef}>
+          <PropertyGallery images={images} />
         </div>
 
         {/* CONTENT */}
         <div>
-          {isFeatured && (
+          {is_featured && (
             <span className="inline-block mb-3 rounded-full bg-[var(--color-brand-soft)] px-4 py-1 text-xs font-medium text-[var(--color-brand-gold)]">
               Featured Property
             </span>
@@ -104,28 +150,72 @@ export default function PropertyDetails({
             {title}
           </h1>
 
-          <p className="text-[var(--color-brand-muted)] mb-4">
-            {location?.area}
-            {location?.city ? `, ${location.city}` : ""}
+          <div className="flex flex-wrap items-center gap-3 mb-1">
+            <p className="text-[var(--color-brand-muted)] flex items-center gap-1.5">
+              <span aria-hidden="true">📍</span>
+              {locality}
+              {city ? `, ${city}` : ""}
+            </p>
+
+            {rera_number && (
+              <span className="inline-flex items-center rounded-full border border-[var(--color-brand-gold)] px-3 py-0.5 text-[10px] uppercase tracking-[0.15em] text-[var(--color-brand-gold)]">
+                MahaRERA {rera_number}
+              </span>
+            )}
+          </div>
+
+          {/* "Verified Luxury Listing" previously rendered here purely
+              because rera_number was non-null. Holding a number is not
+              verification — the field is free text, has contained
+              placeholder values, and no verification is recorded anywhere.
+              Factual registration details now render via <ReraDisclosure />
+              lower on this page. */}
+
+          <p className="text-xl font-semibold text-[var(--color-brand-gold)] mb-4">
+            {price_display}
           </p>
 
-          <p className="text-xl font-semibold text-[var(--color-brand-gold)] mb-6">
-            {priceDisplay}
-          </p>
+          {(bedrooms || area_sqft || project_status) && (
+            <div className="flex flex-wrap gap-2 mb-6">
+              {bedrooms != null && (
+                <span className="inline-flex items-center rounded-full border border-[var(--color-brand-border)] px-3 py-1 text-xs font-light text-[var(--color-brand-black)]">
+                  {bedrooms} BHK
+                </span>
+              )}
+              {area_sqft != null && (
+                <span className="inline-flex items-center rounded-full border border-[var(--color-brand-border)] px-3 py-1 text-xs font-light text-[var(--color-brand-black)]">
+                  {area_sqft.toLocaleString()} sq.ft
+                </span>
+              )}
+              {project_status && (
+                <span className="inline-flex items-center rounded-full border border-[var(--color-brand-border)] px-3 py-1 text-xs font-light text-[var(--color-brand-black)]">
+                  {POSSESSION_LABELS[project_status] ?? project_status}
+                </span>
+              )}
+            </div>
+          )}
 
-          <div className="flex flex-col items-start gap-4">
-            <button type="button" className="btn-gold-outline">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <button type="button" className="btn-gold-outline w-full">
               Schedule Visit
             </button>
             <a
               href="https://wa.me/91XXXXXXXXXX"
               target="_blank"
               rel="noopener noreferrer"
-              className="relative inline-flex items-center gap-1.5 text-xs font-light uppercase tracking-[0.15em] text-brand-gold/70 transition-colors duration-300 after:absolute after:inset-x-0 after:-bottom-1 after:h-px after:bg-brand-gold/40 after:transition-colors after:duration-300 hover:text-brand-gold hover:after:bg-brand-gold"
+              className="inline-flex items-center justify-center gap-2 w-full px-10 py-3.5 text-xs uppercase tracking-[0.2em] font-light transition-all duration-300 bg-white border border-[var(--color-brand-gold)] text-[var(--color-brand-gold)] hover:bg-[rgba(201,166,106,0.08)]"
             >
               <TbMessages size={16} strokeWidth={1.5} />
               WhatsApp Enquiry
             </a>
+          </div>
+
+          <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2 text-[11px] uppercase tracking-[0.12em] text-[var(--color-brand-muted)]">
+            <span>Personal Advisory</span>
+            <span className="text-[var(--color-brand-gold)]">·</span>
+            <span>Prompt Site Visits</span>
+            <span className="text-[var(--color-brand-gold)]">·</span>
+            <span>Documentation Support</span>
           </div>
         </div>
       </div>
@@ -150,9 +240,12 @@ export default function PropertyDetails({
           Why {title}
         </h2>
 
+        {/* "long-term appreciation" removed: an unqualified forward-looking
+            claim about property value, rendered identically on every listing
+            with nothing to support it. */}
         <p className="text-[var(--color-brand-muted)] max-w-3xl mb-8 leading-relaxed">
           A thoughtfully crafted residence for professionals and families who
-          value location, long-term appreciation, and everyday convenience.
+          value location and everyday convenience.
         </p>
 
         <div className="grid md:grid-cols-3 gap-6">
@@ -174,7 +267,7 @@ export default function PropertyDetails({
       </div>
 
       {/* ENQUIRY FORM */}
-      <div className="mt-20 max-w-2xl">
+      <div ref={enquiryRef} className="mt-20 max-w-2xl">
         <div className="rounded-2xl border bg-gradient-to-br from-[var(--color-brand-soft)] to-white p-8 md:p-12">
           <h2 className="text-2xl md:text-3xl font-playfair mb-2">
             Enquire About {title}
@@ -232,6 +325,45 @@ export default function PropertyDetails({
           )}
         </div>
       </div>
+
+      <ReraDisclosure projectReraNumber={rera_number} />
     </section>
+
+    {/* STICKY ENQUIRY BAR */}
+    <div
+      aria-hidden={!showStickyBar}
+      className={`fixed inset-x-0 bottom-0 z-40 transition-all duration-300 ease-out ${
+        showStickyBar
+          ? "translate-y-0 opacity-100"
+          : "translate-y-full opacity-0 pointer-events-none"
+      }`}
+    >
+      <div className="section-shell flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-brand-border)] bg-white/95 backdrop-blur-md px-4 py-3 md:px-8 md:py-4">
+        <div className="min-w-0">
+          <p className="hidden sm:block truncate text-sm font-playfair text-[var(--color-brand-black)]">
+            {title}
+          </p>
+          <p className="text-sm md:text-base font-semibold text-[var(--color-brand-gold)]">
+            {price_display}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-end gap-3 shrink-0">
+          <button type="button" className="btn-gold-outline">
+            Schedule Visit
+          </button>
+          <a
+            href="https://wa.me/91XXXXXXXXXX"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center gap-2 px-10 py-3.5 text-xs uppercase tracking-[0.2em] font-light transition-all duration-300 bg-white border border-[var(--color-brand-gold)] text-[var(--color-brand-gold)] hover:bg-[rgba(201,166,106,0.08)]"
+          >
+            <TbMessages size={16} strokeWidth={1.5} />
+            WhatsApp
+          </a>
+        </div>
+      </div>
+    </div>
+    </>
   );
 }

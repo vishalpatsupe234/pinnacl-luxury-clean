@@ -1,15 +1,18 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { TbMessages } from "react-icons/tb";
 import HeroMedia from "./HeroMedia";
+import { publicPropertySurfacesEnabled } from "@/lib/compliance/publicMode";
 
 const WHATSAPP_NUMBER = "919146238303";
 const PROPERTY_TYPES = ["Residential", "Commercial"] as const;
 type PropertyType = (typeof PROPERTY_TYPES)[number];
 
 export default function Hero() {
+  const showPropertySearch = publicPropertySurfacesEnabled();
   const router = useRouter();
   const [propertyType, setPropertyType] = useState<PropertyType>("Residential");
   const [query, setQuery] = useState("");
@@ -60,6 +63,11 @@ export default function Hero() {
           Pinnacl Properties
         </p>
 
+        {/* Pre-registration mode: the search panel is a property-search CTA
+            that lands on /properties, which serves only a holding notice.
+            Replaced with a general enquiry CTA — brand content above is
+            unchanged. */}
+        {showPropertySearch ? (
         <form onSubmit={handleSubmit}>
           <div className="flex flex-col gap-8 md:flex-row md:items-stretch md:gap-0 md:border-b md:border-white/15 md:pb-5 md:transition-colors md:focus-within:border-brand-gold/50">
             {/* Property type */}
@@ -116,6 +124,13 @@ export default function Hero() {
             </button>
           </div>
         </form>
+        ) : (
+          <div className="mt-8 flex justify-center">
+            <Link href="/contact" className="btn-gold-outline">
+              Enquire
+            </Link>
+          </div>
+        )}
       </div>
 
       <div className="fixed bottom-4 right-4 z-40 sm:bottom-5 sm:right-5 md:bottom-6 md:right-6">

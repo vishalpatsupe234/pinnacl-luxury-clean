@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import propertiesData from "@/data/properties.json";
+import { createClient } from "@/lib/supabase/server";
+import { publicPropertySurfacesEnabled } from "@/lib/compliance/publicMode";
 import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
 import FeaturedProjects from "@/components/FeaturedProjects";
@@ -12,7 +13,7 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://pinnaclproperties.c
 export const metadata: Metadata = {
   title: "Luxury Homes in Maharashtra",
   description:
-    "Discover handpicked luxury residential projects across Maharashtra — RERA-verified, thoughtfully curated for lifestyle, legal clarity, and long-term value.",
+    "Luxury residential projects across Maharashtra. Each listing publishes the project's MahaRERA registration number where we hold it.",
   alternates: {
     canonical: `${siteUrl}/`,
   },
@@ -42,14 +43,37 @@ export const metadata: Metadata = {
   },
 };
 
-export default function Home() {
-  const items = propertiesData.items;
+export default async function Home() {
+  // Public surface: the visibility rule is enforced explicitly below, not
+  // delegated to RLS. RLS policies are OR'd, so properties_broker_read_all
+  // (any active broker) and properties_admin_full_access would otherwise
+  // also match pending_review, rejected and soft-deleted rows for a
+  // logged-in staff session — showing non-public inventory on a public page.
+  // Pre-registration mode: no featured inventory is fetched or rendered.
+  // Brand content on this page is unaffected.
+  //
+  // Explicit column list, never "*": only the fields FeaturedProjects renders
+  // reach the public page payload. Internal linkage/provenance columns
+  // (source_broker_id, project_id, inventory_unit_id, migration_state) must
+  // never be selected here. Keep in sync with the PropertyRow type in
+  // components/FeaturedProjects.tsx.
+  const showInventory = publicPropertySurfacesEnabled();
+
+  const { data: featuredProperties } = showInventory
+    ? await (await createClient())
+        .from("properties")
+        .select("id, slug, title, description, images, price, price_display, locality, city, area_text, area_sqft")
+        .eq("is_featured", true)
+        .eq("approval_status", "approved")
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false })
+    : { data: null };
 
   return (
     <main className="min-h-screen bg-brand-bg text-brand-black">
       <Navbar />
       <Hero />
-      <FeaturedProjects items={items} />
+      {showInventory && <FeaturedProjects properties={featuredProperties ?? []} />}
       <WhyPinnacl />
       <EnquirySection />
       <Footer />

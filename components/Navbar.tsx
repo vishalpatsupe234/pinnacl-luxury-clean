@@ -4,10 +4,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
+import { publicPropertySurfacesEnabled } from "@/lib/compliance/publicMode";
 
 const navItems = [
   { href: "/", label: "Residences" },
-  { href: "/projects", label: "Collections" },
+  // "Collections" points at /properties, which serves only a holding notice
+  // while pre-registration mode is active — hidden rather than linking to it.
+  ...(publicPropertySurfacesEnabled()
+    ? [{ href: "/properties", label: "Collections" }]
+    : []),
   { href: "/about", label: "Our Story" },
   { href: "/contact", label: "Enquire" },
 ];

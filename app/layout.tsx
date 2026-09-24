@@ -23,7 +23,7 @@ const organizationSchema = {
   url: siteUrl,
   logo: `${siteUrl}/favicon.ico`,
   description:
-    "Pinnacl Properties is a luxury real estate advisory specializing in RERA-verified residences across Mumbai.",
+    "Pinnacl Properties is a luxury real estate advisory operating across Mumbai and Maharashtra.",
   address: {
     "@type": "PostalAddress",
     addressLocality: "Ambernath",
@@ -51,11 +51,10 @@ export const metadata: Metadata = {
     template: "%s | Pinnacl Properties",
   },
   description:
-    "Pinnacl Properties curates RERA-verified luxury residential projects across Maharashtra — with clarity, credibility, and discretion.",
+    "Pinnacl Properties is a luxury real estate advisory in Maharashtra. Each listing publishes the project's MahaRERA registration number where we hold it, so you can check it yourself.",
   keywords: [
     "Luxury homes Maharashtra",
     "Premium properties Maharashtra",
-    "RERA verified projects",
     "Maharashtra real estate consultant",
     "Luxury apartments Maharashtra",
     "Luxury residences Maharashtra",
@@ -70,7 +69,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Pinnacl Properties | Luxury Homes in Maharashtra",
     description:
-      "Handpicked RERA-verified luxury residences curated for lifestyle, legal clarity, and long-term value.",
+      "Luxury residences across Maharashtra, presented with the project registration details we hold on record.",
     url: siteUrl,
     siteName: "Pinnacl Properties",
     type: "website",
@@ -87,7 +86,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Pinnacl Properties | Luxury Homes in Maharashtra",
     description:
-      "Handpicked RERA-verified luxury residences curated for lifestyle, legal clarity, and long-term value.",
+      "Luxury residences across Maharashtra, presented with the project registration details we hold on record.",
     images: [
       "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80",
     ],

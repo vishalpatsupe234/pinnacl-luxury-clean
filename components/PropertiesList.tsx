@@ -3,49 +3,47 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import PropertyCardLux from "./PropertyCardLux";
+import { createClient } from "@/lib/supabase/client";
+import type { Database, ProjectStatus } from "@/lib/supabase/types";
 
-type Item = {
-  id: string;
-  title?: string;
-  name?: string;
-  slug?: string;
-  type?: string;
-  status?: string;
-  price?: number;
-  priceDisplay?: string;
-  location?: { area?: string; city?: string };
-  images?: string[];
-  image?: string;
-  isFeatured?: boolean;
-};
+// Only the columns the public listing selects (here and in
+// app/properties/page.tsx). Filter columns are used in the query, not read.
+type PropertyRow = Pick<
+  Database["public"]["Tables"]["properties"]["Row"],
+  | "id"
+  | "slug"
+  | "title"
+  | "images"
+  | "is_featured"
+  | "locality"
+  | "city"
+  | "price"
+  | "price_display"
+>;
+
+const STATUS_OPTIONS: { value: ProjectStatus; label: string }[] = [
+  { value: "under_construction", label: "Under Construction" },
+  { value: "ready_to_move", label: "Ready to Move" },
+  { value: "sold_out", label: "Sold Out" },
+];
 
 type Props = {
-  initialItems?: Item[] | { items?: Item[] } | unknown;
+  // Supabase's own row array on first render (from the Server
+  // Component); typed loosely at this boundary only because it
+  // crosses a server/client component prop, then treated as
+  // PropertyRow[] from here on — see toPropertyRows below.
+  initialItems?: unknown;
 };
+
+function toPropertyRows(v: unknown): PropertyRow[] {
+  return Array.isArray(v) ? (v as PropertyRow[]) : [];
+}
 
 export default function PropertiesList({ initialItems = [] }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const normalize = useCallback((v: unknown): Item[] => {
-    if (!v) return [];
-    if (Array.isArray(v)) return v as Item[];
-    if (typeof v === "object" && v !== null && "items" in v) {
-      const items = (v as { items?: unknown }).items;
-      if (Array.isArray(items)) return items as Item[];
-    }
-    if (typeof v === "object" && v !== null) {
-      for (const key of Object.keys(v as Record<string, unknown>)) {
-        const candidate = (v as Record<string, unknown>)[key];
-        if (Array.isArray(candidate)) {
-          return candidate as Item[];
-        }
-      }
-    }
-    return [];
-  }, []);
-
-  const [items, setItems] = useState<Item[]>(normalize(initialItems));
+  const [items, setItems] = useState<PropertyRow[]>(toPropertyRows(initialItems));
   const [loading, setLoading] = useState(false);
 
   const [search, setSearch] = useState(searchParams.get("search") || searchParams.get("q") || "");
@@ -55,38 +53,74 @@ export default function PropertiesList({ initialItems = [] }: Props) {
   const [max, setMax] = useState(searchParams.get("max") || "");
   const [status, setStatus] = useState(searchParams.get("status") || "");
 
-  const fetchItems = useCallback(async (params: Record<string, string | number | undefined>) => {
+  // Queries the same Supabase "properties" table the initial
+  // server-rendered load uses (app/properties/page.tsx) — no
+  // separate API route, no legacy JSON. Visibility is enforced
+  // explicitly by the approval_status/deleted_at filters below,
+  // matching that initial load exactly, so re-querying here can
+  // never widen what the page shows. It is deliberately not left
+  // to RLS: policies are OR'd, so an active-broker or super_admin
+  // session would otherwise also match pending_review, rejected
+  // and soft-deleted rows on this public page.
+  const fetchItems = useCallback(async (params: {
+    search?: string;
+    type?: string;
+    loc?: string;
+    min?: number;
+    max?: number;
+    status?: string;
+  }) => {
     try {
       setLoading(true);
 
-      const base =
-        typeof window !== "undefined"
-          ? window.location.origin
-          : "";
+      const supabase = createClient();
+      // Explicit column list, never "*" — this runs in the browser with the
+      // public key. Must match app/properties/page.tsx and never include
+      // source_broker_id, project_id, inventory_unit_id or migration_state.
+      let query = supabase
+        .from("properties")
+        .select("id, slug, title, images, is_featured, locality, city, price, price_display")
+        .eq("approval_status", "approved")
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false });
 
-      const url = new URL("/api/properties", base);
+      if (params.search) {
+        const term = params.search.replace(/[%,]/g, "");
+        query = query.or(
+          `title.ilike.%${term}%,city.ilike.%${term}%,locality.ilike.%${term}%`
+        );
+      }
+      if (params.type) {
+        query = query.ilike("property_type", `%${params.type}%`);
+      }
+      if (params.loc) {
+        const term = params.loc.replace(/[%,]/g, "");
+        query = query.or(`city.ilike.%${term}%,locality.ilike.%${term}%`);
+      }
+      if (params.min !== undefined) {
+        query = query.gte("price", params.min);
+      }
+      if (params.max !== undefined) {
+        query = query.lte("price", params.max);
+      }
+      if (params.status) {
+        query = query.eq("project_status", params.status as ProjectStatus);
+      }
 
-      Object.entries(params).forEach(([k, v]) => {
-        if (v !== undefined && String(v).trim().length > 0) {
-          url.searchParams.set(k, String(v));
-        }
-      });
-
-      const res = await fetch(url.toString());
-      if (!res.ok) {
+      const { data, error } = await query;
+      if (error) {
+        console.error("fetchItems error:", error);
         setItems([]);
         return;
       }
-
-      const data = await res.json();
-      setItems(normalize(data));
+      setItems(data ?? []);
     } catch (err) {
       console.error("fetchItems error:", err);
       setItems([]);
     } finally {
       setLoading(false);
     }
-  }, [normalize]);
+  }, []);
 
   function applyFilters() {
     const params = new URLSearchParams();
@@ -126,9 +160,9 @@ export default function PropertiesList({ initialItems = [] }: Props) {
         status: statusValue,
       });
     } else {
-      setItems(normalize(initialItems));
+      setItems(toPropertyRows(initialItems));
     }
-  }, [fetchItems, initialItems, normalize, searchParams]);
+  }, [fetchItems, initialItems, searchParams]);
 
   return (
     <div className="flex gap-8">
@@ -152,9 +186,11 @@ export default function PropertiesList({ initialItems = [] }: Props) {
           <label className="text-xs block mb-2">Status</label>
           <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full px-3 py-2 rounded border text-sm mb-3">
             <option value="">Any</option>
-            <option value="Available">Available</option>
-            <option value="Upcoming">Upcoming</option>
-            <option value="Sold Out">Sold Out</option>
+            {STATUS_OPTIONS.map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.label}
+              </option>
+            ))}
           </select>
 
           <label className="text-xs block mb-2">Price min</label>
@@ -174,7 +210,7 @@ export default function PropertiesList({ initialItems = [] }: Props) {
                 setMax("");
                 setStatus("");
                 router.push("/properties", { scroll: false });
-                setItems(normalize(initialItems));
+                setItems(toPropertyRows(initialItems));
               }}
               className="btn-outline w-full"
             >
@@ -197,12 +233,12 @@ export default function PropertiesList({ initialItems = [] }: Props) {
 
             {items.map((p) => (
               <PropertyCardLux
-                key={p.id ?? p.slug}
-                img={p.images?.[0] || p.image || "/properties/placeholder.jpg"}
-                tag={p.isFeatured ? "Featured" : undefined}
-                title={p.title || p.name || "Property"}
-                location={`${p.location?.area || ""}${p.location?.city ? ", " + p.location.city : ""}`}
-                price={p.priceDisplay || (p.price ? `₹${p.price.toLocaleString()}` : "")}
+                key={p.id}
+                img={p.images?.[0] || "/properties/placeholder.jpg"}
+                tag={p.is_featured ? "Featured" : undefined}
+                title={p.title}
+                location={[p.locality, p.city].filter(Boolean).join(", ")}
+                price={p.price_display || (p.price ? `₹${p.price.toLocaleString()}` : "")}
                 slug={p.slug}
               />
             ))}

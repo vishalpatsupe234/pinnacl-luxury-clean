@@ -1,4 +1,6 @@
 import Link from "next/link";
+import ReraDisclosure from "./ReraDisclosure";
+import { publicPropertySurfacesEnabled } from "@/lib/compliance/publicMode";
 
 export default function Footer() {
   const year = new Date().getFullYear();
@@ -29,7 +31,11 @@ export default function Footer() {
               <ul className="space-y-3">
                 {[
                   { href: "/", label: "Residences" },
-                  { href: "/projects", label: "Collections" },
+                  // Hidden while pre-registration mode is active — /properties
+                  // serves only a holding notice. Mirrors the Navbar.
+                  ...(publicPropertySurfacesEnabled()
+                    ? [{ href: "/properties", label: "Collections" }]
+                    : []),
                   { href: "/about", label: "Our Story" },
                   { href: "/contact", label: "Enquire" },
                 ].map((link) => (
@@ -76,9 +82,11 @@ export default function Footer() {
           <p className="text-xs font-light text-white/30">
             &copy; {year} Pinnacl Properties. All rights reserved.
           </p>
-          <p className="text-xs font-light text-white/30">
-            RERA Registered &middot; Verified Projects Only
-          </p>
+          {/* Factual agent disclosure only. Renders nothing when the agent
+              registration number is not configured. The previous line also
+              claimed "Documentation Reviewed Per Property", which nothing in
+              the system records or substantiates. */}
+          <ReraDisclosure variant="site" />
         </div>
       </div>
     </footer>
