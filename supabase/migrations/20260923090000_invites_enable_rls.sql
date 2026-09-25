@@ -1,0 +1,54 @@
+-- Pinnacl Properties — Security remediation
+-- invites: enable row level security (records a fix already applied live)
+--
+-- WHAT WAS WRONG
+-- A read-only audit on 2026-09-22 found that public.invites was readable by
+-- anonymous callers holding only the publishable key. `select token from
+-- invites` over PostgREST returned the invite token and the invitee's email
+-- address. Control queries run in the same moment against projects, profiles,
+-- leads, audit_log and developers all returned 0 rows, so the failure was
+-- specific to this one table, not a broken key or a global RLS failure.
+--
+-- WHY IT WAS POSSIBLE
+-- The original migration 20260817090000_broker_auth_invites.sql both enables
+-- RLS and creates invites_admin_full_access. The table, its indexes and its
+-- audit trigger all reached the database (audit_log holds invites rows from
+-- 2026-08-16), but RLS itself was not in force on the live table. The
+-- existing policy cannot be the cause: invites_admin_full_access uses
+-- public.is_super_admin(), which coalesces to false when auth.uid() is NULL,
+-- so no anonymous caller could ever pass it. With RLS off, the policy was
+-- simply never consulted.
+--
+-- WHY THIS MATTERS MORE THAN A TOKEN LEAK
+-- invites is the ONLY path to a broker/sales_partner account — there is no
+-- public signup anywhere in this schema. A readable pending token is a
+-- readable invite link. Whether anonymous WRITES were also possible while RLS
+-- was off was never tested — doing so would have meant writing to production
+-- data — so it remains UNVERIFIED rather than assumed either way. The admin
+-- approval gate (status pending_approval -> active via /admin/brokers)
+-- remained the backstop throughout.
+--
+-- WHAT THIS MIGRATION DOES
+-- Exactly one thing: turns RLS on for public.invites. It deliberately does
+-- NOT touch the policy, the grants, the schema, the columns or any row.
+-- invites_admin_full_access (authenticated / ALL / is_super_admin()) is left
+-- exactly as the original migration created it.
+--
+-- ALREADY APPLIED LIVE, VERIFIED BY THE OWNER (2026-09-23):
+--   - public.invites relrowsecurity = true
+--   - invites_admin_full_access still present: authenticated / ALL /
+--     is_super_admin()
+--   - SET LOCAL ROLE anon; SELECT COUNT(*) FROM public.invites; => 0
+-- This file records that change in migration history so a rebuilt or
+-- restored database reaches the same state. Re-running it against a database
+-- where RLS is already enabled is a no-op.
+--
+-- NO APPLICATION IMPACT EXPECTED, and none observed:
+--   - /admin/brokers reads invites through the caller's own super_admin
+--     session, which passes invites_admin_full_access.
+--   - /api/broker/accept-invite reads and updates invites with the
+--     service-role key, which bypasses RLS by design — this is the only
+--     route in the codebase that uses that key.
+--   - No public or client-side code queries this table.
+
+alter table public.invites enable row level security;
