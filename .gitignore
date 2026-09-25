@@ -4,12 +4,22 @@ node_modules/
 # next build
 .next/
 out/
+# TypeScript incremental-build cache (tsconfig sets incremental: true)
+tsconfig.tsbuildinfo
 
 # env files
 .env
 .env.local
 .env.production
 google-service-account.json
+# lib/.env.local was previously tracked despite this bare .env.local
+# pattern not matching it (confirmed via `git check-ignore`) — listed
+# explicitly here so it can never be re-added by accident.
+lib/.env.local
+
+# Supabase CLI local cache (version check, link state) — disposable,
+# regenerated on any `supabase`/`npx supabase` invocation. Never commit it.
+supabase/.temp/
 
 # misc
 .DS_Store
