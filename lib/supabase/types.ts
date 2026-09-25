@@ -7,12 +7,12 @@
 // available:
 //   supabase gen types typescript --project-id <ref> > lib/supabase/types.ts
 //
-// Tables typed in detail: profiles, invites (broker-auth work),
-// and properties, builders (Property Listings module). leads,
-// site_visits, deals, commission_ledger, audit_log remain out of
-// scope and typed generically so this file still compiles against
-// the real schema without claiming knowledge of columns no task
-// has touched yet.
+// Tables typed in detail: profiles, invites (broker-auth work);
+// properties, builders (Property Listings module); leads,
+// lead_notes, site_visits (Lead Management CRM). deals,
+// commission_ledger, audit_log remain out of scope and typed
+// generically so this file still compiles against the real schema
+// without claiming knowledge of columns no task has touched yet.
 //
 // `Relationships: []` is required on every table entry — the
 // Supabase/PostgREST query-builder's generic inference collapses
@@ -26,6 +26,14 @@ export type InviteStatus = "pending" | "accepted" | "expired" | "revoked";
 export type ProjectStatus = "under_construction" | "ready_to_move" | "sold_out";
 export type ApprovalStatus = "pending_review" | "approved" | "rejected";
 export type BuilderVerificationStatus = "pending" | "verified" | "rejected";
+export type LeadStage =
+  | "new"
+  | "contacted"
+  | "qualified"
+  | "site_visit"
+  | "negotiation"
+  | "closed"
+  | "lost";
 
 type GenericTable = {
   Row: Record<string, unknown>;
@@ -203,10 +211,83 @@ export type Database = {
         }>;
         Relationships: [];
       };
+      leads: {
+        Row: {
+          id: string;
+          property_id: string | null;
+          buyer_name: string;
+          buyer_phone: string | null;
+          buyer_email: string | null;
+          message: string | null;
+          assigned_broker_id: string | null;
+          status: LeadStage;
+          deleted_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          property_id?: string | null;
+          buyer_name: string;
+          buyer_phone?: string | null;
+          buyer_email?: string | null;
+          message?: string | null;
+          assigned_broker_id?: string | null;
+          status?: LeadStage;
+        };
+        Update: Partial<{
+          property_id: string | null;
+          buyer_name: string;
+          buyer_phone: string | null;
+          buyer_email: string | null;
+          message: string | null;
+          assigned_broker_id: string | null;
+          status: LeadStage;
+          deleted_at: string | null;
+        }>;
+        Relationships: [];
+      };
+      lead_notes: {
+        Row: {
+          id: string;
+          lead_id: string;
+          author_id: string;
+          note: string;
+          created_at: string;
+        };
+        Insert: {
+          lead_id: string;
+          author_id: string;
+          note: string;
+        };
+        Update: Partial<{
+          note: string;
+        }>;
+        Relationships: [];
+      };
+      site_visits: {
+        Row: {
+          id: string;
+          lead_id: string;
+          property_id: string;
+          broker_id: string;
+          visit_date: string;
+          notes: string | null;
+          created_at: string;
+        };
+        Insert: {
+          lead_id: string;
+          property_id: string;
+          broker_id: string;
+          visit_date: string;
+          notes?: string | null;
+        };
+        Update: Partial<{
+          notes: string | null;
+        }>;
+        Relationships: [];
+      };
       // Out of scope for this task — see supabase/migrations/ for
       // the real schema of these tables.
-      leads: GenericTable;
-      site_visits: GenericTable;
       deals: GenericTable;
       commission_ledger: GenericTable;
       audit_log: GenericTable;
