@@ -1,10 +1,31 @@
 import { NextResponse } from "next/server";
+import { serverErrorResponse } from "@/lib/api/serverErrorResponse";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionProfile } from "@/lib/supabase/getSessionProfile";
-import type { Database } from "@/lib/supabase/types";
+import type { ApprovalStatus, Database } from "@/lib/supabase/types";
 
 type Params = { params: Promise<{ id: string }> };
 type PropertyUpdate = Database["public"]["Tables"]["properties"]["Update"];
+
+// Mirrors the properties_approval_status_check constraint. Validated here so
+// an invalid value returns a clean 400 instead of surfacing as a generic 500
+// from the database constraint. Changing approval_status is super_admin-only:
+// this route already rejects any other role above. A broker cannot self-approve
+// because brokers no longer have any write path to properties at all — Stage 0
+// (supabase/migrations/20260921090000_broker_property_scope_stage0.sql) removed
+// the broker INSERT/UPDATE policies, leaving broker access read-only.
+const APPROVAL_STATUSES: readonly ApprovalStatus[] = [
+  "pending_review",
+  "approved",
+  "rejected",
+];
+
+function isApprovalStatus(value: unknown): value is ApprovalStatus {
+  return (
+    typeof value === "string" &&
+    (APPROVAL_STATUSES as readonly string[]).includes(value)
+  );
+}
 
 async function getOrCreateBuilderId(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -54,8 +75,7 @@ export async function GET(_request: Request, { params }: Params) {
 
     return NextResponse.json({ property: data });
   } catch (error) {
-    console.error("ADMIN PROPERTY GET ERROR:", error);
-    return NextResponse.json({ error: String(error) }, { status: 500 });
+    return serverErrorResponse("ADMIN PROPERTY GET ERROR:", error);
   }
 }
 
@@ -100,7 +120,15 @@ export async function PATCH(request: Request, { params }: Params) {
     if ("bedrooms" in body) update.bedrooms = body.bedrooms ? Number(body.bedrooms) : null;
     if ("bathrooms" in body) update.bathrooms = body.bathrooms ? Number(body.bathrooms) : null;
     if ("area_sqft" in body) update.area_sqft = body.area_sqft ? Number(body.area_sqft) : null;
-    if ("approval_status" in body) update.approval_status = body.approval_status;
+    if ("approval_status" in body) {
+      if (!isApprovalStatus(body.approval_status)) {
+        return NextResponse.json(
+          { error: "approval_status must be pending_review, approved, or rejected" },
+          { status: 400 }
+        );
+      }
+      update.approval_status = body.approval_status;
+    }
 
     const { error } = await supabase
       .from("properties")
@@ -108,14 +136,12 @@ export async function PATCH(request: Request, { params }: Params) {
       .eq("id", id);
 
     if (error) {
-      console.error("ADMIN PROPERTY UPDATE ERROR:", error);
-      return NextResponse.json({ error: String(error.message || error) }, { status: 500 });
+      return serverErrorResponse("ADMIN PROPERTY UPDATE ERROR:", error);
     }
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error("ADMIN PROPERTY UPDATE ERROR:", error);
-    return NextResponse.json({ error: String(error) }, { status: 500 });
+    return serverErrorResponse("ADMIN PROPERTY UPDATE ERROR:", error);
   }
 }
 
@@ -137,13 +163,11 @@ export async function DELETE(_request: Request, { params }: Params) {
       .eq("id", id);
 
     if (error) {
-      console.error("ADMIN PROPERTY DELETE ERROR:", error);
-      return NextResponse.json({ error: String(error.message || error) }, { status: 500 });
+      return serverErrorResponse("ADMIN PROPERTY DELETE ERROR:", error);
     }
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error("ADMIN PROPERTY DELETE ERROR:", error);
-    return NextResponse.json({ error: String(error) }, { status: 500 });
+    return serverErrorResponse("ADMIN PROPERTY DELETE ERROR:", error);
   }
 }
