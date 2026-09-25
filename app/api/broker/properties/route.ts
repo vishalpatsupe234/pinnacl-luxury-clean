@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { serverErrorResponse } from "@/lib/api/serverErrorResponse";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionProfile } from "@/lib/supabase/getSessionProfile";
 import type { ProjectStatus } from "@/lib/supabase/types";
@@ -33,11 +34,13 @@ export async function GET(request: Request) {
       .select(
         "id, title, slug, city, locality, property_type, price, price_display, bedrooms, bathrooms, area_sqft, rera_number, description, project_status, approval_status, is_featured, images, created_at"
       )
+      .eq("approval_status", "approved")
       .is("deleted_at", null)
       .order("created_at", { ascending: false });
 
     if (search) {
-      query = query.or(`title.ilike.%${search}%,city.ilike.%${search}%`);
+      const term = search.replace(/[%,]/g, "");
+      query = query.or(`title.ilike.%${term}%,city.ilike.%${term}%`);
     }
     if (city) {
       query = query.ilike("city", `%${city}%`);
@@ -52,13 +55,11 @@ export async function GET(request: Request) {
     const { data, error } = await query;
 
     if (error) {
-      console.error("BROKER PROPERTIES LIST ERROR:", error);
-      return NextResponse.json({ error: String(error.message || error) }, { status: 500 });
+      return serverErrorResponse("BROKER PROPERTIES LIST ERROR:", error);
     }
 
     return NextResponse.json({ properties: data });
   } catch (error) {
-    console.error("BROKER PROPERTIES LIST ERROR:", error);
-    return NextResponse.json({ error: String(error) }, { status: 500 });
+    return serverErrorResponse("BROKER PROPERTIES LIST ERROR:", error);
   }
 }

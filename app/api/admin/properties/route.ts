@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { serverErrorResponse } from "@/lib/api/serverErrorResponse";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionProfile } from "@/lib/supabase/getSessionProfile";
 import type { ProjectStatus } from "@/lib/supabase/types";
@@ -63,7 +64,8 @@ export async function GET(request: Request) {
       .order("created_at", { ascending: false });
 
     if (search) {
-      query = query.or(`title.ilike.%${search}%,city.ilike.%${search}%`);
+      const term = search.replace(/[%,]/g, "");
+      query = query.or(`title.ilike.%${term}%,city.ilike.%${term}%`);
     }
     if (status) {
       query = query.eq("project_status", status as ProjectStatus);
@@ -72,14 +74,12 @@ export async function GET(request: Request) {
     const { data, error } = await query;
 
     if (error) {
-      console.error("ADMIN PROPERTIES LIST ERROR:", error);
-      return NextResponse.json({ error: String(error.message || error) }, { status: 500 });
+      return serverErrorResponse("ADMIN PROPERTIES LIST ERROR:", error);
     }
 
     return NextResponse.json({ properties: data });
   } catch (error) {
-    console.error("ADMIN PROPERTIES LIST ERROR:", error);
-    return NextResponse.json({ error: String(error) }, { status: 500 });
+    return serverErrorResponse("ADMIN PROPERTIES LIST ERROR:", error);
   }
 }
 
@@ -149,16 +149,11 @@ export async function POST(request: Request) {
       .single();
 
     if (error || !data) {
-      console.error("ADMIN PROPERTIES CREATE ERROR:", error);
-      return NextResponse.json(
-        { error: error ? String(error.message || error) : "Could not create property" },
-        { status: 500 }
-      );
+      return serverErrorResponse("ADMIN PROPERTIES CREATE ERROR:", error ?? "Could not create property");
     }
 
     return NextResponse.json({ ok: true, id: data.id });
   } catch (error) {
-    console.error("ADMIN PROPERTIES CREATE ERROR:", error);
-    return NextResponse.json({ error: String(error) }, { status: 500 });
+    return serverErrorResponse("ADMIN PROPERTIES CREATE ERROR:", error);
   }
 }

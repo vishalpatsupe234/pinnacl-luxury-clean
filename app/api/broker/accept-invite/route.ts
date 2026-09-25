@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { serverErrorResponse } from "@/lib/api/serverErrorResponse";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 // The one Route Handler in this codebase that uses the service
@@ -66,10 +67,7 @@ export async function POST(request: Request) {
   });
 
   if (createError || !created?.user) {
-    return NextResponse.json(
-      { error: createError?.message || "Could not create account" },
-      { status: 500 }
-    );
+    return serverErrorResponse("ACCEPT-INVITE CREATE USER ERROR:", createError ?? "Could not create account");
   }
 
   // Broker/sales_partner accounts start pending_approval even

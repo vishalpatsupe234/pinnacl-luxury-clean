@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { randomBytes } from "crypto";
+import { serverErrorResponse } from "@/lib/api/serverErrorResponse";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionProfile } from "@/lib/supabase/getSessionProfile";
 
@@ -43,11 +44,7 @@ export async function POST(request: Request) {
       .single();
 
     if (error || !data) {
-      console.error("INVITE API ERROR (insert):", error);
-      return NextResponse.json(
-        { error: error ? String(error.message || error) : "Could not create invite" },
-        { status: 500 }
-      );
+      return serverErrorResponse("INVITE API ERROR (insert):", error ?? "Could not create invite");
     }
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
@@ -62,11 +59,7 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
-    console.error("INVITE API ERROR:", error);
-    return NextResponse.json(
-      { error: String(error) },
-      { status: 500 }
-    );
+    return serverErrorResponse("INVITE API ERROR:", error);
   }
 }
 
