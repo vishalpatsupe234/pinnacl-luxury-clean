@@ -32,8 +32,9 @@ export default function BrokersAdminClient({
   initialInvites,
 }: Props) {
   const [pending, setPending] = useState(initialPending);
-  const [active] = useState(initialActive);
+  const [active, setActive] = useState(initialActive);
   const [invites, setInvites] = useState(initialInvites);
+  const [actionError, setActionError] = useState("");
 
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"verified_broker" | "sales_partner">("verified_broker");
@@ -79,15 +80,39 @@ export default function BrokersAdminClient({
     }
   }
 
-  async function handleDecision(id: string, action: "approve" | "reject") {
+  async function handleDecision(id: string, action: "approve" | "reject" | "suspend") {
+    // Suspension is not part of the normal approval flow and has no undo
+    // in this UI, so it asks first. Approve/reject keep their existing
+    // one-click behaviour unchanged.
+    if (action === "suspend") {
+      const ok = window.confirm(
+        "Suspend this broker? They will immediately lose access to the broker dashboard, properties and leads. Their account, leads and audit history are kept."
+      );
+      if (!ok) return;
+    }
+
     setActingOn(id);
+    setActionError("");
     try {
       const res = await fetch(`/api/admin/brokers/${id}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ action }),
       });
-      if (res.ok) {
+
+      if (!res.ok) {
+        // Surfaces the self-suspend guard (400) and the no-matching-row
+        // conflict (409), which previously reported a silent success.
+        const data = await res.json().catch(() => null);
+        setActionError(data?.error || "Could not update this broker.");
+        return;
+      }
+
+      if (action === "suspend") {
+        setActive((prev) =>
+          prev.map((p) => (p.id === id ? { ...p, status: "suspended" } : p))
+        );
+      } else {
         setPending((prev) => prev.filter((p) => p.id !== id));
       }
     } finally {
@@ -176,6 +201,9 @@ export default function BrokersAdminClient({
       {/* Active / rejected brokers */}
       <section>
         <p className="section-label mb-6">Brokers ({active.length})</p>
+        {actionError && (
+          <p className="mb-4 text-xs text-red-700/80 font-light">{actionError}</p>
+        )}
         {active.length === 0 ? (
           <p className="text-sm font-light text-brand-muted">No brokers yet.</p>
         ) : (
@@ -183,9 +211,23 @@ export default function BrokersAdminClient({
             {active.map((p) => (
               <div key={p.id} className="flex items-center justify-between py-4">
                 <p className="text-sm text-brand-black">{p.full_name || "(no name provided)"}</p>
-                <p className="text-xs uppercase tracking-[0.15em] font-light text-brand-muted">
-                  {p.status}
-                </p>
+                <div className="flex items-center gap-4">
+                  <p className="text-xs uppercase tracking-[0.15em] font-light text-brand-muted">
+                    {p.status}
+                  </p>
+                  {/* Suspend is offered only for a broker who is currently
+                      active. The API enforces the same precondition, so a
+                      stale view cannot suspend an already-suspended row. */}
+                  {p.status === "active" && (
+                    <button
+                      onClick={() => handleDecision(p.id, "suspend")}
+                      disabled={actingOn === p.id}
+                      className="text-xs uppercase tracking-[0.15em] font-light text-red-700 hover:text-red-700/70 transition-colors"
+                    >
+                      Suspend
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
