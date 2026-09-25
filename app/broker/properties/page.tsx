@@ -24,6 +24,9 @@ export default async function BrokerPropertiesPage() {
     .select(
       "id, title, slug, city, locality, property_type, price, price_display, bedrooms, bathrooms, area_sqft, rera_number, description, project_status, approval_status, is_featured, images, created_at"
     )
+    // Brokers see approved, live inventory only. Enforced explicitly here as
+    // well as by RLS, so this route's intent stands on its own.
+    .eq("approval_status", "approved")
     .is("deleted_at", null)
     .order("created_at", { ascending: false });
 

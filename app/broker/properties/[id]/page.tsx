@@ -34,6 +34,8 @@ export default async function BrokerPropertyDetailPage({ params }: Params) {
       "id, title, city, locality, property_type, price, price_display, bedrooms, bathrooms, area_sqft, rera_number, description, project_status, is_featured, images"
     )
     .eq("id", id)
+    // Approved, live inventory only — see the listing page for rationale.
+    .eq("approval_status", "approved")
     .is("deleted_at", null)
     .single();
 
