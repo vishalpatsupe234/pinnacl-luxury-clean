@@ -46,6 +46,22 @@ export default function PropertyDetails({
   const pastHeroRef = useRef(false);
   const enquiryVisibleRef = useRef(false);
 
+  // The business WhatsApp number already configured in EnquirySection.tsx,
+  // Hero.tsx, FloatingAction.tsx and app/contact/page.tsx. This file carried
+  // the placeholder "91XXXXXXXXXX", which produced a dead wa.me link. The
+  // existing value is reused — no new number is introduced here.
+  const whatsappUrl = `https://wa.me/919146238303?text=${encodeURIComponent(
+    `Hello, I would like to enquire about ${property.title}.`
+  )}`;
+
+  // "Schedule Visit" previously had no onClick and did nothing. It now scrolls
+  // to the enquiry form already on this page — the same form both CTAs feed —
+  // rather than introducing a booking system. Respects reduced-motion via the
+  // browser's own scroll-behavior handling.
+  function scrollToEnquiry() {
+    enquiryRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   useEffect(() => {
     const galleryEl = galleryRef.current;
     const enquiryEl = enquiryRef.current;
@@ -141,7 +157,7 @@ export default function PropertyDetails({
         {/* CONTENT */}
         <div>
           {is_featured && (
-            <span className="inline-block mb-3 rounded-full bg-[var(--color-brand-soft)] px-4 py-1 text-xs font-medium text-[var(--color-brand-gold)]">
+            <span className="inline-block mb-3 rounded-full bg-[var(--color-brand-bg)] px-4 py-1 text-xs font-medium text-[var(--color-brand-gold)]">
               Featured Property
             </span>
           )}
@@ -196,11 +212,11 @@ export default function PropertyDetails({
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <button type="button" className="btn-gold-outline w-full">
+            <button type="button" onClick={scrollToEnquiry} className="btn-gold-outline w-full">
               Schedule Visit
             </button>
             <a
-              href="https://wa.me/91XXXXXXXXXX"
+              href={whatsappUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center gap-2 w-full px-10 py-3.5 text-xs uppercase tracking-[0.2em] font-light transition-all duration-300 bg-white border border-[var(--color-brand-gold)] text-[var(--color-brand-gold)] hover:bg-[rgba(201,166,106,0.08)]"
@@ -268,7 +284,12 @@ export default function PropertyDetails({
 
       {/* ENQUIRY FORM */}
       <div ref={enquiryRef} className="mt-20 max-w-2xl">
-        <div className="rounded-2xl border bg-gradient-to-br from-[var(--color-brand-soft)] to-white p-8 md:p-12">
+        {/* Was bg-gradient-to-br from-[var(--color-brand-soft)] to-white:
+            --color-brand-soft is not defined in app/globals.css (the real token
+            is --color-brand-gold-soft, a solid gold tone, not a surface), and
+            gradients are disallowed by the project design rules. Replaced with
+            the flat off-white surface token already used site-wide. */}
+        <div className="rounded-2xl border border-[var(--color-brand-border)] bg-[var(--color-brand-bg)] p-8 md:p-12">
           <h2 className="text-2xl md:text-3xl font-playfair mb-2">
             Enquire About {title}
           </h2>
@@ -349,11 +370,11 @@ export default function PropertyDetails({
         </div>
 
         <div className="flex flex-wrap items-center justify-end gap-3 shrink-0">
-          <button type="button" className="btn-gold-outline">
+          <button type="button" onClick={scrollToEnquiry} className="btn-gold-outline">
             Schedule Visit
           </button>
           <a
-            href="https://wa.me/91XXXXXXXXXX"
+            href={whatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center justify-center gap-2 px-10 py-3.5 text-xs uppercase tracking-[0.2em] font-light transition-all duration-300 bg-white border border-[var(--color-brand-gold)] text-[var(--color-brand-gold)] hover:bg-[rgba(201,166,106,0.08)]"

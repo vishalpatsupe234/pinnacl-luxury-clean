@@ -39,6 +39,50 @@ function toPropertyRows(v: unknown): PropertyRow[] {
   return Array.isArray(v) ? (v as PropertyRow[]) : [];
 }
 
+// ---------------------------------------------------------------------------
+// Property class filter (Residential / Commercial)
+//
+// `properties.property_type` is deliberately FREE TEXT, not a CHECK-constrained
+// enum — see the column comment in
+// supabase/migrations/20260818100000_property_listings_module.sql:
+//   "Free-text category (e.g. Apartment, Villa, Plot, Commercial). Not a
+//    CHECK-constrained enum by design — real estate categories vary too much
+//    to hardcode."
+//
+// The UI, here and in the Hero, offers a coarser two-way class:
+// Residential | Commercial. These are NOT category values. "Commercial" happens
+// to also be a valid category, but "Residential" is a CLASS that spans
+// Apartment, Villa, Plot, Penthouse and so on.
+//
+// The previous implementation matched the class against the category directly
+// (`ilike %Residential%`). Every real row stores "Apartment", so a Residential
+// search silently returned zero results while approved inventory existed. That
+// was invisible only because pre-registration mode hides these surfaces.
+//
+// Mapping instead of an enum keeps the free-text model intact and needs no
+// database change: commercial is matched positively, and residential is
+// "anything not commercial" — which stays correct as new categories are added
+// without this list having to know about them.
+const COMMERCIAL_MATCH = "%commercial%";
+
+function applyPropertyClassFilter<T extends {
+  ilike: (column: string, pattern: string) => T;
+  not: (column: string, operator: string, value: string) => T;
+}>(query: T, propertyClass: string): T {
+  if (propertyClass.toLowerCase() === "commercial") {
+    return query.ilike("property_type", COMMERCIAL_MATCH);
+  }
+  if (propertyClass.toLowerCase() === "residential") {
+    // Everything that is not commercial. Rows with a null property_type are
+    // excluded by `not.ilike` in PostgREST, which is the safer default here:
+    // an uncategorised row is not asserted to be residential.
+    return query.not("property_type", "ilike", COMMERCIAL_MATCH);
+  }
+  // Any other value is treated as a literal category, preserving the previous
+  // behaviour for direct ?type=Villa style links.
+  return query.ilike("property_type", `%${propertyClass}%`);
+}
+
 export default function PropertiesList({ initialItems = [] }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -91,7 +135,7 @@ export default function PropertiesList({ initialItems = [] }: Props) {
         );
       }
       if (params.type) {
-        query = query.ilike("property_type", `%${params.type}%`);
+        query = applyPropertyClassFilter(query, params.type);
       }
       if (params.loc) {
         const term = params.loc.replace(/[%,]/g, "");
@@ -167,7 +211,12 @@ export default function PropertiesList({ initialItems = [] }: Props) {
   return (
     <div className="flex gap-8">
       <aside className="w-full max-w-xs sticky top-24 self-start">
-        <div className="card-surface">
+        {/* card-surface / btn-primary-hero / btn-outline were never defined in
+            app/globals.css, so this panel rendered unstyled. Replaced with the
+            project's established conventions: the admin panels'
+            "border border-brand-border bg-white p-6" card, and .btn-gold-outline
+            for the primary action. No redesign. */}
+        <div className="border border-brand-border bg-white p-6">
           <h3 className="font-semibold mb-3">Filters</h3>
 
           <label className="text-xs block mb-2">Search</label>
@@ -200,7 +249,9 @@ export default function PropertiesList({ initialItems = [] }: Props) {
           <input value={max} onChange={(e) => setMax(e.target.value)} className="w-full px-3 py-2 rounded border text-sm mb-4" />
 
           <div className="flex gap-2">
-            <button onClick={applyFilters} className="btn-primary-hero w-full">Apply</button>
+            <button onClick={applyFilters} className="btn-gold-outline w-full px-4">
+              Apply
+            </button>
             <button
               onClick={() => {
                 setSearch("");
@@ -212,7 +263,7 @@ export default function PropertiesList({ initialItems = [] }: Props) {
                 router.push("/properties", { scroll: false });
                 setItems(toPropertyRows(initialItems));
               }}
-              className="btn-outline w-full"
+              className="w-full px-4 py-3.5 text-xs uppercase tracking-[0.2em] font-light text-brand-muted hover:text-brand-black transition-colors duration-300"
             >
               Reset
             </button>
