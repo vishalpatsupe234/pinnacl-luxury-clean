@@ -269,14 +269,28 @@ function getClientKey(request: Request): string {
   return ip || "unknown";
 }
 
+// ============================================================
+// ORDER OF OPERATIONS — deliberate, do not reorder.
+//
+//   1. rate limit
+//   2. validate
+//   3. Supabase insert      <- PRIMARY. Its failure fails the request.
+//   4. Google Sheets        <- notification. Isolated, never fatal.
+//   5. Resend email         <- notification. Isolated, never fatal.
+//   6. 200 { ok: true }
+//
+// Storing the lead is the only thing that must succeed. Sheets and Resend
+// are notification conveniences layered on top.
+//
+// Previously all five Google/Resend environment variables were asserted at
+// the very top, so one missing notification variable threw before the CRM
+// write and silently took down lead capture entirely. Those assertions now
+// live inside the notification paths that actually need them, and each
+// notification is wrapped so its failure cannot turn a stored lead into a
+// 500. Conversely, a Supabase failure no longer returns 200.
+// ============================================================
 export async function POST(request: Request) {
   try {
-    if (!SHEET_ID) throw missingEnv("GOOGLE_SHEET_ID");
-    if (!SERVICE_ACCOUNT_JSON) throw missingEnv("GOOGLE_SERVICE_ACCOUNT_JSON");
-    if (!RESEND_API_KEY) throw missingEnv("RESEND_API_KEY");
-    if (!RESEND_FROM_EMAIL) throw missingEnv("RESEND_FROM_EMAIL");
-    if (!OWNER_NOTIFICATION_EMAIL) throw missingEnv("OWNER_NOTIFICATION_EMAIL");
-
     const rateLimit = checkRateLimit(getClientKey(request));
     if (!rateLimit.allowed) {
       return NextResponse.json(
@@ -298,11 +312,19 @@ export async function POST(request: Request) {
 
     const { name, phone, email, location, message, propertyId } = validated.data;
 
-    // Best-effort: also record this enquiry in the Supabase "leads"
-    // table the admin/broker CRM reads from (existing leads_public_insert
-    // RLS policy already allows anon inserts — no service role needed).
-    // Isolated in its own try/catch so a failure here never breaks the
-    // existing Sheets/email notification below.
+    // ----------------------------------------------------------
+    // STEP 3 — PRIMARY: store the lead in Supabase.
+    //
+    // This is the enquiry. The admin/broker CRM reads from this table, and
+    // the existing leads_public_insert RLS policy already allows the anon
+    // insert, so no service role is needed for the write.
+    //
+    // Unlike the notifications below, a failure here IS fatal: the request
+    // returns 500 and the caller is told the submission failed. It
+    // previously logged and fell through to a 200, so a lead could be lost
+    // while the visitor was shown a thank-you.
+    // ----------------------------------------------------------
+    let leadStored = false;
     try {
       const supabase = await createClient();
 
@@ -360,88 +382,113 @@ export async function POST(request: Request) {
       });
 
       if (leadError) {
-        console.error("lead_error", "supabase_insert_failed", leadError);
+        // code/message only — never the payload, which carries buyer PII.
+        console.error("lead_error", "supabase_insert_failed", leadError.code);
       } else {
-        console.log("lead_step", "supabase_insert_success");
+        leadStored = true;
       }
-    } catch (err) {
-      console.error("lead_error", "supabase_insert_exception", err);
-    }
-
-    // Credentials come from the environment, never the filesystem — see
-    // loadServiceAccountCredentials above. Only the failure stage is
-    // logged; the credential itself never reaches the logs.
-    let credentials;
-    try {
-      credentials = loadServiceAccountCredentials(SERVICE_ACCOUNT_JSON);
-      console.log("lead_step", "service_account_loaded");
     } catch (err) {
       console.error(
         "lead_error",
-        "load_service_account_credentials",
+        "supabase_insert_exception",
         err instanceof Error ? err.message : "unknown error"
       );
-      throw err;
     }
 
-    const auth = new google.auth.GoogleAuth({
-      credentials,
-      scopes: ["https://www.googleapis.com/auth/spreadsheets"],
-    });
-
-    const sheets = google.sheets({ version: "v4", auth });
-
-    // Initialize headers if they don't exist
-    try {
-      const headerCheckResponse = await sheets.spreadsheets.values.get({
-        spreadsheetId: SHEET_ID,
-        range: "Sheet1!A1:G1",
-      });
-
-      if (!headerCheckResponse.data.values || headerCheckResponse.data.values.length === 0) {
-        const headers = [["Timestamp", "Name", "Phone", "Email", "Location", "Message", "Property ID"]];
-        await sheets.spreadsheets.values.update({
-          spreadsheetId: SHEET_ID,
-          range: "Sheet1!A1:G1",
-          valueInputOption: "RAW",
-          requestBody: { values: headers },
-        });
-        console.log("lead_step", "headers_initialized");
-      }
-    } catch (err) {
-      console.warn("lead_step", "header_check_failed", err);
+    // Primary storage failed: stop here. Do not attempt notifications, and
+    // do not report success. Returning early also means no Sheet row or
+    // email exists for a lead the CRM does not have.
+    if (!leadStored) {
+      return NextResponse.json(
+        { error: "Something went wrong. Please try again." },
+        { status: 500 }
+      );
     }
 
     const timestamp = new Date().toISOString();
-    const values = [[timestamp, name, phone, email, location, message, propertyId]];
 
-    console.log("lead_step", "before_sheet_append", {
-      spreadsheetId: SHEET_ID,
-      range: SHEET_RANGE,
-    });
+    // ----------------------------------------------------------
+    // STEP 4 — NOTIFICATION: Google Sheets. Isolated and never fatal.
+    //
+    // The env assertions live here, not at the top of the handler, so missing
+    // Google configuration degrades to "lead stored, not mirrored to the
+    // Sheet" rather than blocking lead capture outright.
+    // ----------------------------------------------------------
+    try {
+      if (!SHEET_ID) throw missingEnv("GOOGLE_SHEET_ID");
+      if (!SERVICE_ACCOUNT_JSON) throw missingEnv("GOOGLE_SERVICE_ACCOUNT_JSON");
 
-    // RAW (not USER_ENTERED): stores every value as literal text.
-    // USER_ENTERED would let a value starting with =, +, -, or @ be
-    // parsed as a spreadsheet formula — a confirmed CSV/Sheets
-    // injection vector for a publicly-submitted field.
-    await sheets.spreadsheets.values.append({
-      spreadsheetId: SHEET_ID,
-      range: SHEET_RANGE,
-      valueInputOption: "RAW",
-      requestBody: { values },
-    });
+      const credentials = loadServiceAccountCredentials(SERVICE_ACCOUNT_JSON);
+      const auth = new google.auth.GoogleAuth({
+        credentials,
+        scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+      });
+      const sheets = google.sheets({ version: "v4", auth });
 
-    console.log("lead_step", "sheet_append_success");
+      // Initialize headers if they don't exist. Already non-fatal.
+      try {
+        const headerCheckResponse = await sheets.spreadsheets.values.get({
+          spreadsheetId: SHEET_ID,
+          range: "Sheet1!A1:G1",
+        });
 
-    const resend = new Resend(RESEND_API_KEY);
-    const safeName = escapeHtml(name);
-    const safePhone = escapeHtml(phone);
-    const safeEmail = escapeHtml(email);
-    const safeLocation = escapeHtml(location);
-    const safePropertyId = escapeHtml(propertyId);
-    const safeMessage = escapeHtml(message);
+        if (!headerCheckResponse.data.values || headerCheckResponse.data.values.length === 0) {
+          const headers = [["Timestamp", "Name", "Phone", "Email", "Location", "Message", "Property ID"]];
+          await sheets.spreadsheets.values.update({
+            spreadsheetId: SHEET_ID,
+            range: "Sheet1!A1:G1",
+            valueInputOption: "RAW",
+            requestBody: { values: headers },
+          });
+        }
+      } catch (err) {
+        console.warn(
+          "lead_step",
+          "header_check_failed",
+          err instanceof Error ? err.message : "unknown error"
+        );
+      }
 
-    const html = `
+      // RAW (not USER_ENTERED): stores every value as literal text.
+      // USER_ENTERED would let a value starting with =, +, -, or @ be
+      // parsed as a spreadsheet formula — a confirmed CSV/Sheets
+      // injection vector for a publicly-submitted field.
+      await sheets.spreadsheets.values.append({
+        spreadsheetId: SHEET_ID,
+        range: SHEET_RANGE,
+        valueInputOption: "RAW",
+        requestBody: {
+          values: [[timestamp, name, phone, email, location, message, propertyId]],
+        },
+      });
+    } catch (err) {
+      // The lead is already safely in Supabase. Log the stage and continue to
+      // the email rather than converting a stored lead into a 500.
+      console.error(
+        "lead_error",
+        "sheets_append_failed",
+        err instanceof Error ? err.message : "unknown error"
+      );
+    }
+
+    // ----------------------------------------------------------
+    // STEP 5 — NOTIFICATION: owner email via Resend. Isolated, never fatal.
+    // No retry and no second insert here, so a failure cannot duplicate a lead.
+    // ----------------------------------------------------------
+    try {
+      if (!RESEND_API_KEY) throw missingEnv("RESEND_API_KEY");
+      if (!RESEND_FROM_EMAIL) throw missingEnv("RESEND_FROM_EMAIL");
+      if (!OWNER_NOTIFICATION_EMAIL) throw missingEnv("OWNER_NOTIFICATION_EMAIL");
+
+      const resend = new Resend(RESEND_API_KEY);
+      const safeName = escapeHtml(name);
+      const safePhone = escapeHtml(phone);
+      const safeEmail = escapeHtml(email);
+      const safeLocation = escapeHtml(location);
+      const safePropertyId = escapeHtml(propertyId);
+      const safeMessage = escapeHtml(message);
+
+      const html = `
       <h1>New Enquiry Received</h1>
       <p><strong>Name:</strong> ${safeName || "(not provided)"}</p>
       <p><strong>Phone:</strong> ${safePhone || "(not provided)"}</p>
@@ -452,14 +499,19 @@ export async function POST(request: Request) {
       <p><em>Received at ${timestamp}</em></p>
     `;
 
-    console.log("lead_step", "before_resend_send", { from: RESEND_FROM_EMAIL, to: OWNER_NOTIFICATION_EMAIL });
-    const resendResponse = await resend.emails.send({
-      from: RESEND_FROM_EMAIL,
-      to: OWNER_NOTIFICATION_EMAIL,
-      subject: `New lead from ${safeName || "website"}`,
-      html,
-    });
-    console.log("lead_step", "resend_success", resendResponse);
+      await resend.emails.send({
+        from: RESEND_FROM_EMAIL,
+        to: OWNER_NOTIFICATION_EMAIL,
+        subject: `New lead from ${safeName || "website"}`,
+        html,
+      });
+    } catch (err) {
+      console.error(
+        "lead_error",
+        "resend_send_failed",
+        err instanceof Error ? err.message : "unknown error"
+      );
+    }
 
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (err) {

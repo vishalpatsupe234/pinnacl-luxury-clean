@@ -15,19 +15,32 @@ export default function ContactPage() {
   const [message, setMessage] = useState("");
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
+  // Previously this ignored the response entirely and called setSent(true) in
+  // both the try and the catch, so a 400, 429 or 500 rendered a thank-you
+  // while the enquiry was discarded. Success is now shown only for a 2xx.
+  // Entered values are never cleared on failure, so the visitor can retry
+  // without retyping.
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
+    setError("");
     try {
-      await fetch("/api/leads", {
+      const res = await fetch("/api/leads", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ name, email, phone, location, message }),
       });
+
+      if (!res.ok) {
+        setError("Something went wrong. Please try again.");
+        return;
+      }
+
       setSent(true);
     } catch {
-      setSent(true);
+      setError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -136,6 +149,10 @@ export default function ContactPage() {
                     rows={3}
                     className="input-light resize-none"
                   />
+
+                  {error && (
+                    <p className="text-xs font-light text-red-700/80">{error}</p>
+                  )}
 
                   <div className="flex flex-col items-center gap-5 pt-4">
                     <button

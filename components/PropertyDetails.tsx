@@ -38,6 +38,7 @@ export default function PropertyDetails({
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [enquirySubmitted, setEnquirySubmitted] = useState(false);
+  const [enquiryError, setEnquiryError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showStickyBar, setShowStickyBar] = useState(false);
 
@@ -95,11 +96,16 @@ export default function PropertyDetails({
     };
   }, []);
 
+  // Previously the response was discarded, so a 400, 429 or 500 still showed
+  // the success state. Success is now shown only for a 2xx, the error renders
+  // inline instead of via alert(), and the fields are cleared only on success
+  // so a failed submission can be retried without retyping.
   async function handleEnquirySubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
+    setEnquiryError("");
     try {
-      await fetch("/api/leads", {
+      const res = await fetch("/api/leads", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -111,14 +117,19 @@ export default function PropertyDetails({
           propertyId: slug || "",
         }),
       });
+
+      if (!res.ok) {
+        setEnquiryError("Something went wrong. Please try again.");
+        return;
+      }
+
       setEnquirySubmitted(true);
       setName("");
       setPhone("");
       setEmail("");
       setMessage("");
-    } catch (err) {
-      console.error(err);
-      alert("Error sending enquiry. Please try again.");
+    } catch {
+      setEnquiryError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -335,6 +346,9 @@ export default function PropertyDetails({
                 rows={4}
                 className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-gold)] resize-none"
               />
+              {enquiryError && (
+                <p className="text-xs font-light text-red-700/80">{enquiryError}</p>
+              )}
               <button
                 type="submit"
                 disabled={loading}
