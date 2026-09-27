@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { serverErrorResponse } from "@/lib/api/serverErrorResponse";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionProfile } from "@/lib/supabase/getSessionProfile";
+import { isLeadStage } from "@/lib/supabase/types";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -73,6 +74,13 @@ export async function PATCH(request: Request, { params }: Params) {
     const body = await request.json().catch(() => null);
     if (!body || typeof body.status !== "string") {
       return NextResponse.json({ error: "status is required" }, { status: 400 });
+    }
+
+    // Validate against the canonical whitelist before the update. Previously
+    // any string was forwarded and only the leads_status_check constraint
+    // stopped it, surfacing as a generic 500 rather than a clear 400.
+    if (!isLeadStage(body.status)) {
+      return NextResponse.json({ error: "Invalid lead stage" }, { status: 400 });
     }
 
     const supabase = await createClient();

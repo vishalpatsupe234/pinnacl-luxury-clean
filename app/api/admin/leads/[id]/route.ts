@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { serverErrorResponse } from "@/lib/api/serverErrorResponse";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionProfile } from "@/lib/supabase/getSessionProfile";
-import type { Database } from "@/lib/supabase/types";
+import { isLeadStage, type Database } from "@/lib/supabase/types";
 
 type Params = { params: Promise<{ id: string }> };
 type LeadUpdate = Database["public"]["Tables"]["leads"]["Update"];
@@ -29,7 +29,17 @@ export async function PATCH(request: Request, { params }: Params) {
     if ("message" in body) update.message = body.message || null;
     if ("property_id" in body) update.property_id = body.property_id || null;
     if ("assigned_broker_id" in body) update.assigned_broker_id = body.assigned_broker_id || null;
-    if ("status" in body) update.status = body.status;
+
+    // Validate the stage against the canonical whitelist before it reaches
+    // the database. The leads_status_check constraint would reject an invalid
+    // value anyway, but only as a generic 500 via serverErrorResponse — this
+    // returns a clean 400 and keeps the constraint error out of the response.
+    if ("status" in body) {
+      if (!isLeadStage(body.status)) {
+        return NextResponse.json({ error: "Invalid lead stage" }, { status: 400 });
+      }
+      update.status = body.status;
+    }
 
     // Archive / restore — soft delete only, never a hard DELETE.
     //

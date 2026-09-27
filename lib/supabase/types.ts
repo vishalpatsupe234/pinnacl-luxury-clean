@@ -26,14 +26,40 @@ export type InviteStatus = "pending" | "accepted" | "expired" | "revoked";
 export type ProjectStatus = "under_construction" | "ready_to_move" | "sold_out";
 export type ApprovalStatus = "pending_review" | "approved" | "rejected";
 export type BuilderVerificationStatus = "pending" | "verified" | "rejected";
-export type LeadStage =
-  | "new"
-  | "contacted"
-  | "qualified"
-  | "site_visit"
-  | "negotiation"
-  | "closed"
-  | "lost";
+// The canonical lead pipeline stages, as a runtime value.
+//
+// Mirrors the leads_status_check constraint in
+// supabase/migrations/20260819100000_lead_management_crm.sql exactly:
+//   check (status in ('new','contacted','qualified','site_visit',
+//                     'negotiation','closed','lost'))
+//
+// A runtime array rather than a bare type union, because server routes must
+// validate an incoming string before it reaches the database — a TypeScript
+// union disappears at compile time and cannot check a request body. LeadStage
+// is derived from this array, so the type and the runtime whitelist cannot
+// drift apart.
+//
+// This file carries no `server-only` guard and is already imported by client
+// components, so a plain const array is safe on both sides of the boundary.
+export const LEAD_STAGES = [
+  "new",
+  "contacted",
+  "qualified",
+  "site_visit",
+  "negotiation",
+  "closed",
+  "lost",
+] as const;
+
+export type LeadStage = (typeof LEAD_STAGES)[number];
+
+/** Runtime guard for an untrusted `status` value from a request body. */
+export function isLeadStage(value: unknown): value is LeadStage {
+  return (
+    typeof value === "string" &&
+    (LEAD_STAGES as readonly string[]).includes(value)
+  );
+}
 
 type GenericTable = {
   Row: Record<string, unknown>;
