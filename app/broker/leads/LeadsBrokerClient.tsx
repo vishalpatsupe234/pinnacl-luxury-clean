@@ -29,6 +29,7 @@ export default function LeadsBrokerClient({ initialLeads }: { initialLeads: Lead
   const [leads, setLeads] = useState(initialLeads);
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState("");
+  const [saveError, setSaveError] = useState("");
 
   const filtered = useMemo(() => {
     return leads.filter((l) => {
@@ -41,13 +42,42 @@ export default function LeadsBrokerClient({ initialLeads }: { initialLeads: Lead
     });
   }, [leads, search, stageFilter]);
 
+  // Optimistic update with rollback — same pattern as the admin client.
+  //
+  // Previously the response was discarded, so a 403 (lead no longer assigned
+  // to this broker, or account suspended mid-session) or a 500 left the
+  // dropdown showing a stage the database never accepted.
+  //
+  // The previous stage is captured and restored on any non-2xx or network
+  // failure. Stage remains the only field a broker can change; nothing here
+  // adds assignment capability.
   async function updateStage(id: string, status: string) {
+    const previousStatus = leads.find((l) => l.id === id)?.status;
+    if (previousStatus === undefined) return;
+
+    setSaveError("");
     setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, status } : l)));
-    await fetch(`/api/broker/leads/${id}`, {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
+
+    const rollback = () => {
+      setLeads((prev) =>
+        prev.map((l) => (l.id === id ? { ...l, status: previousStatus } : l))
+      );
+      setSaveError("Could not save this change. Please try again.");
+    };
+
+    try {
+      const res = await fetch(`/api/broker/leads/${id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+
+      if (!res.ok) {
+        rollback();
+      }
+    } catch {
+      rollback();
+    }
   }
 
   return (
@@ -72,6 +102,10 @@ export default function LeadsBrokerClient({ initialLeads }: { initialLeads: Lead
           ))}
         </select>
       </div>
+
+      {saveError && (
+        <p className="mb-4 text-xs font-light text-red-700/80">{saveError}</p>
+      )}
 
       {filtered.length === 0 ? (
         <p className="text-sm font-light text-brand-muted">No leads assigned to you yet.</p>

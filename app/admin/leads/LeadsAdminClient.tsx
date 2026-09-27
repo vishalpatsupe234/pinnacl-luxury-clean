@@ -57,6 +57,7 @@ export default function LeadsAdminClient({
   const [notesByLead, setNotesByLead] = useState<Record<string, Note[]>>({});
   const [noteDraft, setNoteDraft] = useState("");
   const [savingNote, setSavingNote] = useState(false);
+  const [saveError, setSaveError] = useState("");
 
   const filtered = useMemo(() => {
     return leads.filter((l) => {
@@ -95,13 +96,42 @@ export default function LeadsAdminClient({
     }
   }
 
+  // Optimistic update with rollback.
+  //
+  // Previously the response was discarded entirely, so a 400, 403 or 500 left
+  // the UI showing a stage or assignment the database never accepted — an
+  // admin could believe a lead was assigned when it was not.
+  //
+  // The whole previous lead row is captured before mutating, and restored
+  // verbatim on any non-2xx or network failure, so the UI ends up matching
+  // the database rather than a guess. Restoring the captured row (not just
+  // the patched keys) also avoids leaving a half-applied multi-key patch.
+  // No refetch is needed: rollback is sufficient to reach server truth.
   async function updateLead(id: string, patch: Record<string, unknown>) {
+    const previous = leads.find((l) => l.id === id);
+    if (!previous) return;
+
+    setSaveError("");
     setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch } : l)));
-    await fetch(`/api/admin/leads/${id}`, {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(patch),
-    });
+
+    const rollback = () => {
+      setLeads((prev) => prev.map((l) => (l.id === id ? previous : l)));
+      setSaveError("Could not save this change. Please try again.");
+    };
+
+    try {
+      const res = await fetch(`/api/admin/leads/${id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+
+      if (!res.ok) {
+        rollback();
+      }
+    } catch {
+      rollback();
+    }
   }
 
   async function toggleNotes(leadId: string) {
@@ -232,6 +262,10 @@ export default function LeadsAdminClient({
             {creating ? "Creating…" : "Save Lead"}
           </button>
         </form>
+      )}
+
+      {saveError && (
+        <p className="mb-4 text-xs font-light text-red-700/80">{saveError}</p>
       )}
 
       {filtered.length === 0 ? (
