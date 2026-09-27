@@ -20,12 +20,17 @@ export async function GET(request: Request) {
     const brokerId = url.searchParams.get("broker_id") || "";
 
     const supabase = await createClient();
+    // Returns active AND archived rows, with `deleted_at` selected, so this
+    // matches what app/admin/leads/page.tsx loads. The admin client splits
+    // them by its Active/Archived view; the Active view still shows only
+    // deleted_at = null. Previously this filtered archived rows out, which
+    // meant the post-create refresh silently emptied the Archived view.
+    // Admin-only route — the super_admin check above is unchanged.
     let query = supabase
       .from("leads")
       .select(
-        "id, property_id, buyer_name, buyer_phone, buyer_email, message, assigned_broker_id, status, created_at"
+        "id, property_id, buyer_name, buyer_phone, buyer_email, message, assigned_broker_id, status, created_at, deleted_at"
       )
-      .is("deleted_at", null)
       .order("created_at", { ascending: false });
 
     if (search) {

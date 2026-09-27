@@ -31,6 +31,19 @@ export async function PATCH(request: Request, { params }: Params) {
     if ("assigned_broker_id" in body) update.assigned_broker_id = body.assigned_broker_id || null;
     if ("status" in body) update.status = body.status;
 
+    // Archive / restore — soft delete only, never a hard DELETE.
+    //
+    // The caller supplies intent, not a value: any non-null `deleted_at`
+    // archives with a SERVER-generated timestamp, and only an explicit null
+    // restores. A client therefore cannot backdate an archive, forge a
+    // timestamp, or inject a non-date value. The row and every field on it
+    // are preserved either way, and the existing leads_audit trigger records
+    // the change automatically — no separate audit path.
+    if ("deleted_at" in body) {
+      update.deleted_at =
+        body.deleted_at === null ? null : new Date().toISOString();
+    }
+
     const supabase = await createClient();
     const { error } = await supabase.from("leads").update(update).eq("id", id);
 

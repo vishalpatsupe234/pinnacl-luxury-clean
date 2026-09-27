@@ -12,6 +12,7 @@ type Lead = {
   assigned_broker_id: string | null;
   status: string;
   created_at: string;
+  deleted_at: string | null;
 };
 
 type Broker = { id: string; full_name: string | null };
@@ -58,9 +59,29 @@ export default function LeadsAdminClient({
   const [noteDraft, setNoteDraft] = useState("");
   const [savingNote, setSavingNote] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const [view, setView] = useState<"active" | "archived">("active");
+  const [confirmArchiveId, setConfirmArchiveId] = useState<string | null>(null);
+  const [confirmRestoreId, setConfirmRestoreId] = useState<string | null>(null);
+  const [archivingId, setArchivingId] = useState<string | null>(null);
+
+  // Counts are derived per view and never mixed: the Active tab counts only
+  // live rows, the Archived tab only archived ones.
+  const activeCount = useMemo(
+    () => leads.filter((l) => !l.deleted_at).length,
+    [leads]
+  );
+  const archivedCount = useMemo(
+    () => leads.filter((l) => l.deleted_at).length,
+    [leads]
+  );
 
   const filtered = useMemo(() => {
     return leads.filter((l) => {
+      // The view gate runs first: an archived lead can never appear in the
+      // Active list, whatever the search or stage filter says.
+      const matchesView = view === "archived" ? !!l.deleted_at : !l.deleted_at;
+      if (!matchesView) return false;
+
       const matchesSearch =
         !search ||
         l.buyer_name.toLowerCase().includes(search.toLowerCase()) ||
@@ -68,7 +89,7 @@ export default function LeadsAdminClient({
       const matchesStage = !stageFilter || l.status === stageFilter;
       return matchesSearch && matchesStage;
     });
-  }, [leads, search, stageFilter]);
+  }, [leads, search, stageFilter, view]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -134,6 +155,57 @@ export default function LeadsAdminClient({
     }
   }
 
+  // Archive / restore. Both are soft: the row is never deleted, every field is
+  // preserved, and only `deleted_at` moves. The server generates the archive
+  // timestamp — the client sends intent, not a value.
+  //
+  // Server-confirmed, not optimistic: the list only changes after a 2xx, so a
+  // rejected archive never removes a lead from the admin's view. On failure
+  // the list is untouched and a generic error is shown.
+  async function setArchived(id: string, archived: boolean) {
+    setSaveError("");
+    setArchivingId(id);
+    try {
+      const res = await fetch(`/api/admin/leads/${id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          deleted_at: archived ? new Date().toISOString() : null,
+        }),
+      });
+
+      if (!res.ok) {
+        setSaveError(
+          archived
+            ? "Could not archive this lead. Please try again."
+            : "Could not restore this lead. Please try again."
+        );
+        return;
+      }
+
+      // Mirror the server's own rule locally: archived rows carry a
+      // timestamp, restored rows carry null. The exact value is cosmetic —
+      // only null vs non-null decides which view a lead appears in.
+      setLeads((prev) =>
+        prev.map((l) =>
+          l.id === id
+            ? { ...l, deleted_at: archived ? new Date().toISOString() : null }
+            : l
+        )
+      );
+      setConfirmArchiveId(null);
+      setConfirmRestoreId(null);
+    } catch {
+      setSaveError(
+        archived
+          ? "Could not archive this lead. Please try again."
+          : "Could not restore this lead. Please try again."
+      );
+    } finally {
+      setArchivingId(null);
+    }
+  }
+
   async function toggleNotes(leadId: string) {
     if (expandedId === leadId) {
       setExpandedId(null);
@@ -171,6 +243,32 @@ export default function LeadsAdminClient({
 
   return (
     <div>
+      {/* Active / Archived view toggle. Uses the same gold-underline
+          treatment as other in-content navigation; Active is the default. */}
+      <div className="flex items-center gap-8 mb-8 border-b border-brand-border">
+        {([
+          { key: "active" as const, label: "Active Leads", count: activeCount },
+          { key: "archived" as const, label: "Archived", count: archivedCount },
+        ]).map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => {
+              setView(tab.key);
+              setConfirmArchiveId(null);
+              setConfirmRestoreId(null);
+              setSaveError("");
+            }}
+            className={`-mb-px border-b pb-3 text-xs uppercase tracking-[0.15em] font-light transition-colors duration-300 ${
+              view === tab.key
+                ? "border-brand-gold text-brand-black"
+                : "border-transparent text-brand-muted hover:text-brand-black"
+            }`}
+          >
+            {tab.label} ({tab.count})
+          </button>
+        ))}
+      </div>
+
       <div className="flex flex-col sm:flex-row gap-4 justify-between mb-10">
         <div className="flex flex-col sm:flex-row gap-4 flex-1">
           <input
@@ -316,6 +414,64 @@ export default function LeadsAdminClient({
                   >
                     {expandedId === l.id ? "Hide Notes" : "Notes"}
                   </button>
+
+                  {/* Archive / Restore with an inline confirm step, matching
+                      the pattern already used for property soft-delete. */}
+                  {view === "active" ? (
+                    confirmArchiveId === l.id ? (
+                      <span className="flex items-center gap-3 text-xs uppercase tracking-[0.15em] font-light">
+                        <span className="text-brand-muted normal-case tracking-normal">
+                          Archive this lead?
+                        </span>
+                        <button
+                          onClick={() => setConfirmArchiveId(null)}
+                          className="text-brand-muted hover:text-brand-black transition-colors"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={() => setArchived(l.id, true)}
+                          disabled={archivingId === l.id}
+                          className="text-red-700 hover:text-red-700/70 transition-colors disabled:opacity-50"
+                        >
+                          {archivingId === l.id ? "Archiving…" : "Archive"}
+                        </button>
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmArchiveId(l.id)}
+                        className="text-xs uppercase tracking-[0.15em] font-light text-brand-muted hover:text-brand-black transition-colors"
+                      >
+                        Archive
+                      </button>
+                    )
+                  ) : confirmRestoreId === l.id ? (
+                    <span className="flex items-center gap-3 text-xs uppercase tracking-[0.15em] font-light">
+                      <span className="text-brand-muted normal-case tracking-normal">
+                        Restore this lead?
+                      </span>
+                      <button
+                        onClick={() => setConfirmRestoreId(null)}
+                        className="text-brand-muted hover:text-brand-black transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => setArchived(l.id, false)}
+                        disabled={archivingId === l.id}
+                        className="text-brand-gold hover:text-brand-gold/70 transition-colors disabled:opacity-50"
+                      >
+                        {archivingId === l.id ? "Restoring…" : "Restore"}
+                      </button>
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmRestoreId(l.id)}
+                      className="text-xs uppercase tracking-[0.15em] font-light text-brand-gold hover:text-brand-gold/70 transition-colors"
+                    >
+                      Restore
+                    </button>
+                  )}
                 </div>
               </div>
 

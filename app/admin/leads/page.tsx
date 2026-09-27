@@ -16,12 +16,19 @@ export default async function AdminLeadsPage() {
 
   const supabase = await createClient();
 
+  // Active AND archived are both fetched, and `deleted_at` is now selected so
+  // the client can split them. The Active view remains the default and still
+  // shows only rows with deleted_at = null — the filter moved from the query
+  // into the view toggle, it was not removed.
+  //
+  // One query rather than two, matching how this page already filters search
+  // and stage client-side. At current volume that is the smaller change; the
+  // absence of pagination on this page is pre-existing and unchanged here.
   const { data: leads } = await supabase
     .from("leads")
     .select(
-      "id, property_id, buyer_name, buyer_phone, buyer_email, message, assigned_broker_id, status, created_at"
+      "id, property_id, buyer_name, buyer_phone, buyer_email, message, assigned_broker_id, status, created_at, deleted_at"
     )
-    .is("deleted_at", null)
     .order("created_at", { ascending: false });
 
   const { data: brokers } = await supabase
