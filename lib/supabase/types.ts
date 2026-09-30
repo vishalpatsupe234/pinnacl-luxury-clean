@@ -61,6 +61,57 @@ export function isLeadStage(value: unknown): value is LeadStage {
   );
 }
 
+// The canonical lead acquisition channels.
+//
+// Mirrors the leads_lead_source_check constraint in
+// supabase/migrations/20260929090000_leads_source_and_response_tracking.sql
+// exactly. Same two-layer arrangement as LEAD_STAGES above: this array gives
+// the API boundary a clean 400 on a bad value, the CHECK constraint is the
+// boundary that cannot be bypassed. Adding a channel means editing both.
+//
+// NULL (absent) is a legitimate value in the database and means "not
+// recorded" — every lead created before 2026-09-29 is NULL, and nothing
+// backfills them, because guessing a historical lead's origin would be
+// fabricating data.
+//
+// This is CHANNEL only. Campaign-level attribution (UTM parameters, ad sets,
+// keywords) is deliberately not modelled: a website visitor arriving from an
+// Instagram ad is recorded as 'website' here, because that is the surface
+// they submitted from and it is all the server can honestly observe without
+// UTM capture. See the P1 report for why that gap is left open.
+export const LEAD_SOURCES = [
+  "website",
+  "whatsapp",
+  "facebook",
+  "instagram",
+  "google",
+  "referral",
+  "direct",
+  "other",
+] as const;
+
+export type LeadSource = (typeof LEAD_SOURCES)[number];
+
+/** Runtime guard for an untrusted `lead_source` value from a request body. */
+export function isLeadSource(value: unknown): value is LeadSource {
+  return (
+    typeof value === "string" &&
+    (LEAD_SOURCES as readonly string[]).includes(value)
+  );
+}
+
+/** Human labels for the channels above, for use in admin/broker UI. */
+export const LEAD_SOURCE_LABELS: Record<LeadSource, string> = {
+  website: "Website",
+  whatsapp: "WhatsApp",
+  facebook: "Facebook",
+  instagram: "Instagram",
+  google: "Google",
+  referral: "Referral",
+  direct: "Direct",
+  other: "Other",
+};
+
 type GenericTable = {
   Row: Record<string, unknown>;
   Insert: Record<string, unknown>;
@@ -247,6 +298,10 @@ export type Database = {
           message: string | null;
           assigned_broker_id: string | null;
           status: LeadStage;
+          lead_source: LeadSource | null;
+          assigned_at: string | null;
+          contacted_at: string | null;
+          next_action_at: string | null;
           deleted_at: string | null;
           created_at: string;
           updated_at: string;
@@ -259,7 +314,13 @@ export type Database = {
           message?: string | null;
           assigned_broker_id?: string | null;
           status?: LeadStage;
+          lead_source?: LeadSource | null;
         };
+        // `assigned_at` is deliberately absent from Insert and Update.
+        // It is owned by the leads_assignment_timestamp trigger, which
+        // overwrites whatever a caller supplies, so leaving it out of these
+        // types turns "application code must not write this column" into a
+        // compile-time guarantee rather than a convention.
         Update: Partial<{
           property_id: string | null;
           buyer_name: string;
@@ -268,6 +329,9 @@ export type Database = {
           message: string | null;
           assigned_broker_id: string | null;
           status: LeadStage;
+          lead_source: LeadSource | null;
+          contacted_at: string | null;
+          next_action_at: string | null;
           deleted_at: string | null;
         }>;
         Relationships: [];

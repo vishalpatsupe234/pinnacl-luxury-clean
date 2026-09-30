@@ -1,0 +1,153 @@
+-- Pinnacl Properties — R1 follow-up: the column guard must fire FIRST
+--
+-- ############################################################
+-- WHAT WAS WRONG
+--
+-- Test T8g of the 2026-09-30 C3 security run found that an authenticated
+-- active broker could issue:
+--
+--     update public.leads set assigned_at = now() - interval '30 days'
+--     where id = <their own assigned lead>;
+--
+-- and have it ACCEPTED rather than rejected by
+-- enforce_lead_broker_column_guard(). Every other protected column
+-- (buyer_name, buyer_phone, buyer_email, message, property_id, lead_source,
+-- deleted_at, created_at, assigned_broker_id) was correctly rejected.
+--
+-- WHY ONLY THAT ONE COLUMN
+--
+-- BEFORE ROW triggers on a table fire in alphabetical order by trigger name.
+-- As created by 20260929090000 the order was:
+--
+--     leads_assignment_timestamp   (1st)
+--     leads_broker_column_guard    (2nd)
+--     leads_set_updated_at         (3rd)
+--
+-- maintain_lead_assignment_timestamp() runs first, and when
+-- assigned_broker_id is unchanged it executes its normalising branch:
+--
+--     new.assigned_at := old.assigned_at;
+--
+-- That silently discarded the forged value BEFORE the guard inspected it.
+-- The guard then compared new.assigned_at with old.assigned_at, found them
+-- identical, and raised nothing.
+--
+-- assigned_at is the ONLY protected column another BEFORE trigger rewrites,
+-- which is precisely why it was the only one that slipped through.
+--
+-- IMPORTANT, AND STATED PLAINLY: no data was ever forged. The row kept its
+-- original assigned_at, because the normalisation did its job. This was a
+-- FALSE ACCEPTANCE, not a false write — the broker's client received a
+-- success response for a change that never happened.
+--
+-- It still had to be fixed, for two reasons beyond the misleading response:
+-- the protection was ACCIDENTAL, depending entirely on one trigger happening
+-- to run before another; and nothing would have failed if that ordering ever
+-- changed. A guard that only works because of the alphabet is not a guard.
+-- ############################################################
+
+-- ============================================================
+-- THE FIX
+--
+-- Rename the guard's TRIGGER so it sorts first, making the guard inspect the
+-- caller's raw NEW row before any other trigger can launder it:
+--
+--     leads_00_broker_column_guard   (1st)  <- was leads_broker_column_guard
+--     leads_assignment_timestamp     (2nd)
+--     leads_set_updated_at           (3rd)
+--
+-- tgname is of type `name`, which compares in C collation, so '0' (0x30)
+-- sorts before 'a' (0x61) — the ordering holds regardless of the database's
+-- lc_collate. The numeric prefix is deliberate and load-bearing: it exists to
+-- pin firing order, and renaming it back would silently reopen T8g.
+--
+-- WHY REORDER RATHER THAN REWRITE THE FUNCTION
+--
+-- enforce_lead_broker_column_guard() is already correct — it checks
+-- assigned_at exactly as it checks every other protected column. The defect
+-- was never in its logic, only in when it ran. Changing the function would
+-- have treated the symptom.
+--
+-- A guard that runs first is also structurally better than one that runs
+-- last: it no longer depends on what any other trigger does to NEW, so a
+-- future trigger on this table cannot mask it the way this one did.
+-- ============================================================
+
+-- ============================================================
+-- DELIBERATELY NOT CHANGED
+--
+--   enforce_lead_broker_column_guard()  — function body untouched. Same
+--                                         protected column list, same
+--                                         exception message, same
+--                                         SECURITY DEFINER, same
+--                                         search_path, same pass-through for
+--                                         auth.uid() is null and
+--                                         is_super_admin().
+--   leads_assignment_timestamp          — neither the trigger nor
+--                                         maintain_lead_assignment_timestamp()
+--                                         is modified in any way. assigned_at
+--                                         remains trigger-owned for EVERY
+--                                         caller, including admin and
+--                                         sessionless ones: the guard lets
+--                                         those through, and the
+--                                         normalisation still overwrites
+--                                         whatever they supplied. Both
+--                                         protections now hold independently.
+--   leads_set_updated_at / leads_audit  — untouched.
+--   RLS policies                        — untouched. assigned_broker_id is
+--                                         still rejected by the WITH CHECK on
+--                                         leads_broker_update_assigned before
+--                                         the guard is even reached (this is
+--                                         why C3 T8e/T8f report a row-security
+--                                         violation rather than the guard's
+--                                         own message).
+--   leads.status                        — the seven stages are untouched.
+--   columns / rows / constraints        — nothing added, dropped or written.
+--                                         This migration changes one trigger
+--                                         name and nothing else.
+-- ============================================================
+
+-- Both names are dropped so this migration is safe to re-run and converges
+-- to exactly one guard trigger whichever name is currently installed.
+drop trigger if exists leads_broker_column_guard on public.leads;
+drop trigger if exists leads_00_broker_column_guard on public.leads;
+
+create trigger leads_00_broker_column_guard
+  before update on public.leads
+  for each row execute function public.enforce_lead_broker_column_guard();
+
+comment on function public.enforce_lead_broker_column_guard() is
+  'Closes finding R1. RLS is row-level and cannot restrict columns, so this trigger restricts a non-admin authenticated caller (i.e. a broker) to status, contacted_at and next_action_at. Sessionless callers (service role, migrations, SQL editor) and super_admin pass through. Installed as leads_00_broker_column_guard so it fires BEFORE leads_assignment_timestamp: that trigger normalises new.assigned_at back to old.assigned_at when assigned_broker_id is unchanged, which previously hid a broker attempt to forge assigned_at from this guard (C3 test T8g, 2026-09-30). Do not rename this trigger.';
+
+-- ============================================================
+-- ROLLBACK (for reference — not executed by this migration)
+--
+--   drop trigger if exists leads_00_broker_column_guard on public.leads;
+--   create trigger leads_broker_column_guard
+--     before update on public.leads
+--     for each row execute function public.enforce_lead_broker_column_guard();
+--
+-- Restores the 20260929090000 ordering and reopens T8g. No data is touched
+-- either way; this is a trigger name only.
+-- ============================================================
+
+-- ============================================================
+-- POST-APPLY VERIFICATION (read-only — run separately, not part of this file)
+--
+--   select tgname from pg_trigger
+--   where tgrelid = 'public.leads'::regclass and not tgisinternal
+--   order by tgname;
+--   -- expect exactly four, in THIS order:
+--   --   leads_00_broker_column_guard   <- guard now first
+--   --   leads_assignment_timestamp
+--   --   leads_audit
+--   --   leads_set_updated_at
+--   -- leads_broker_column_guard must NOT appear
+--
+--   select count(*) from public.leads;   -- expect 17, unchanged
+--
+-- Then RERUN THE FULL C3 SCRIPT. T8g must flip to passed = true with the
+-- guard's own message. T0 and T4-T8f must all still pass: reordering changes
+-- when the guard sees NEW, so the permitted paths have to be re-confirmed,
+-- not assumed.
+-- ============================================================

@@ -2,9 +2,26 @@ import { NextResponse } from "next/server";
 import { serverErrorResponse } from "@/lib/api/serverErrorResponse";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionProfile } from "@/lib/supabase/getSessionProfile";
-import { isLeadStage } from "@/lib/supabase/types";
+import { isLeadStage, type Database } from "@/lib/supabase/types";
 
 type Params = { params: Promise<{ id: string }> };
+type LeadUpdate = Database["public"]["Tables"]["leads"]["Update"];
+
+// Same contract as the admin route's parser: a future follow-up date is the
+// one timestamp that legitimately comes from the caller, so it is parsed,
+// range-checked and normalised to ISO rather than stored as the raw string.
+// null or "" is an explicit clear.
+function parseNextActionAt(
+  value: unknown
+): { ok: true; value: string | null } | { ok: false } {
+  if (value === null || value === "") return { ok: true, value: null };
+  if (typeof value !== "string") return { ok: false };
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return { ok: false };
+
+  return { ok: true, value: parsed.toISOString() };
+}
 
 export async function GET(_request: Request, { params }: Params) {
   try {
@@ -30,7 +47,9 @@ export async function GET(_request: Request, { params }: Params) {
     // exposed automatically. Matches app/broker/leads/[id]/page.tsx.
     const { data, error } = await supabase
       .from("leads")
-      .select("id, property_id, buyer_name, buyer_phone, buyer_email, message, status, created_at")
+      .select(
+        "id, property_id, buyer_name, buyer_phone, buyer_email, message, status, lead_source, assigned_at, contacted_at, next_action_at, created_at"
+      )
       .eq("id", id)
       .eq("assigned_broker_id", user.id)
       .is("deleted_at", null)
@@ -72,21 +91,63 @@ export async function PATCH(request: Request, { params }: Params) {
     }
 
     const body = await request.json().catch(() => null);
-    if (!body || typeof body.status !== "string") {
-      return NextResponse.json({ error: "status is required" }, { status: 400 });
+    if (!body || typeof body !== "object") {
+      return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
     }
 
-    // Validate against the canonical whitelist before the update. Previously
-    // any string was forwarded and only the leads_status_check constraint
-    // stopped it, surfacing as a generic 500 rather than a clear 400.
-    if (!isLeadStage(body.status)) {
-      return NextResponse.json({ error: "Invalid lead stage" }, { status: 400 });
+    // A broker's writable surface is exactly three columns, and this route
+    // will only ever build an update from these three keys. It is the same
+    // set the leads_broker_column_guard database trigger enforces, stated
+    // twice on purpose: this route is the convenient boundary, the trigger is
+    // the one that also holds when someone bypasses the route and calls
+    // PostgREST directly with their own session (finding R1).
+    //
+    // Everything else on a lead — the buyer's details, the enquiry message,
+    // property attribution, assignment, archive state — stays admin-owned.
+    const update: LeadUpdate = {};
+
+    if ("status" in body) {
+      // Validate against the canonical whitelist before the update. Previously
+      // any string was forwarded and only the leads_status_check constraint
+      // stopped it, surfacing as a generic 500 rather than a clear 400.
+      if (!isLeadStage(body.status)) {
+        return NextResponse.json({ error: "Invalid lead stage" }, { status: 400 });
+      }
+      update.status = body.status;
+    }
+
+    // First contact. Intent only — the timestamp is generated here, on the
+    // server, so a broker cannot backdate a call to make their own response
+    // time look better. Deliberately independent of `status`: moving a lead
+    // to the 'contacted' stage is a label, contacted_at is meant to be
+    // evidence, and inferring one from the other would make every response
+    // time derived from it meaningless.
+    if ("contacted_at" in body) {
+      update.contacted_at =
+        body.contacted_at === null ? null : new Date().toISOString();
+    }
+
+    // Next planned follow-up — a future date, so the value genuinely comes
+    // from the caller. Parsed and normalised rather than stored raw; an
+    // unparseable date is a 400, and null or "" clears the reminder.
+    if ("next_action_at" in body) {
+      const nextAction = parseNextActionAt(body.next_action_at);
+      if (!nextAction.ok) {
+        return NextResponse.json({ error: "Invalid follow-up date" }, { status: 400 });
+      }
+      update.next_action_at = nextAction.value;
+    }
+
+    // An empty patch would otherwise issue a no-op UPDATE and return 200,
+    // telling the UI a change succeeded when nothing was sent.
+    if (Object.keys(update).length === 0) {
+      return NextResponse.json({ error: "No supported fields to update" }, { status: 400 });
     }
 
     const supabase = await createClient();
     const { error } = await supabase
       .from("leads")
-      .update({ status: body.status })
+      .update(update)
       .eq("id", id)
       .eq("assigned_broker_id", user.id);
 

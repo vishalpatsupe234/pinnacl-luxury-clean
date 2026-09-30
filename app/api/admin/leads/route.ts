@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { serverErrorResponse } from "@/lib/api/serverErrorResponse";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionProfile } from "@/lib/supabase/getSessionProfile";
-import type { LeadStage } from "@/lib/supabase/types";
+import { isLeadSource, type LeadSource, type LeadStage } from "@/lib/supabase/types";
 
 // Admin has full access to every lead — enforced by the existing
 // leads RLS (leads_broker_read_assigned/leads_broker_update_assigned
@@ -29,7 +29,7 @@ export async function GET(request: Request) {
     let query = supabase
       .from("leads")
       .select(
-        "id, property_id, buyer_name, buyer_phone, buyer_email, message, assigned_broker_id, status, created_at, deleted_at"
+        "id, property_id, buyer_name, buyer_phone, buyer_email, message, assigned_broker_id, status, lead_source, assigned_at, contacted_at, next_action_at, created_at, deleted_at"
       )
       .order("created_at", { ascending: false });
 
@@ -73,7 +73,29 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Buyer name is required" }, { status: 400 });
     }
 
+    // Acquisition channel for a manually-logged lead.
+    //
+    // This is the entry point that matters most for attribution: WhatsApp
+    // enquiries, referrals and walk-ins never touch /api/leads (which is
+    // always 'website'), so this dropdown is the only place their real origin
+    // is ever recorded.
+    //
+    // Omitting it is allowed and stores NULL — "not recorded" — because a
+    // genuinely unknown origin should be left unknown rather than guessed at.
+    // A value that is present but not on the allowlist is a malformed request
+    // and is rejected, rather than being silently downgraded to NULL.
+    let leadSource: LeadSource | null = null;
+    const rawSource: unknown = body?.lead_source;
+    if (rawSource !== undefined && rawSource !== null && rawSource !== "") {
+      if (!isLeadSource(rawSource)) {
+        return NextResponse.json({ error: "Invalid lead source" }, { status: 400 });
+      }
+      leadSource = rawSource;
+    }
+
     const supabase = await createClient();
+    // `assigned_at` is not set here: the leads_assignment_timestamp trigger
+    // stamps it on INSERT whenever assigned_broker_id is non-null.
     const { data, error } = await supabase
       .from("leads")
       .insert({
@@ -84,6 +106,7 @@ export async function POST(request: Request) {
         property_id: body?.property_id || null,
         assigned_broker_id: body?.assigned_broker_id || null,
         status: "new",
+        lead_source: leadSource,
       })
       .select("id")
       .single();

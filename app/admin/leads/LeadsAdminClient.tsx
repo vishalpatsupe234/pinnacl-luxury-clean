@@ -1,6 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { LEAD_SOURCES, LEAD_SOURCE_LABELS } from "@/lib/supabase/types";
+import {
+  formatDate,
+  formatDateTime,
+  isFollowUpDue,
+  toDateInputValue,
+} from "@/lib/leads/leadDisplay";
 
 type Lead = {
   id: string;
@@ -11,6 +18,10 @@ type Lead = {
   message: string | null;
   assigned_broker_id: string | null;
   status: string;
+  lead_source: string | null;
+  assigned_at: string | null;
+  contacted_at: string | null;
+  next_action_at: string | null;
   created_at: string;
   deleted_at: string | null;
 };
@@ -36,6 +47,10 @@ const EMPTY_NEW_LEAD = {
   message: "",
   property_id: "",
   assigned_broker_id: "",
+  // Starts blank and the field is `required`, so the admin has to make a
+  // deliberate choice. It is not pre-filled with a plausible-looking default:
+  // a guessed channel is worse than no channel, because it looks like data.
+  lead_source: "",
 };
 
 export default function LeadsAdminClient({
@@ -63,6 +78,13 @@ export default function LeadsAdminClient({
   const [confirmArchiveId, setConfirmArchiveId] = useState<string | null>(null);
   const [confirmRestoreId, setConfirmRestoreId] = useState<string | null>(null);
   const [archivingId, setArchivingId] = useState<string | null>(null);
+  const [attentionOnly, setAttentionOnly] = useState(false);
+
+  // "Now" is sampled ONCE, via a lazy state initializer, rather than read
+  // during every render. Reading the clock inline would give each re-render a
+  // different answer and could flip a follow-up's styling mid-interaction;
+  // holding it in state keeps the row stable for the life of the page.
+  const [nowMs] = useState(() => Date.now());
 
   // Counts are derived per view and never mixed: the Active tab counts only
   // live rows, the Archived tab only archived ones.
@@ -73,6 +95,26 @@ export default function LeadsAdminClient({
   const archivedCount = useMemo(
     () => leads.filter((l) => l.deleted_at).length,
     [leads]
+  );
+
+  // The three states that mean a lead is waiting on someone. Deliberately
+  // derived, not stored: there is no "needs attention" column to keep in sync,
+  // and the rule can change without a migration.
+  const attentionFlags = useMemo(() => {
+    const flags = new Map<string, string[]>();
+    for (const l of leads) {
+      const reasons: string[] = [];
+      if (!l.assigned_broker_id) reasons.push("Unassigned");
+      if (!l.contacted_at) reasons.push("Not contacted");
+      if (isFollowUpDue(l.next_action_at, nowMs)) reasons.push("Follow-up due");
+      if (reasons.length > 0) flags.set(l.id, reasons);
+    }
+    return flags;
+  }, [leads, nowMs]);
+
+  const attentionCount = useMemo(
+    () => leads.filter((l) => !l.deleted_at && attentionFlags.has(l.id)).length,
+    [leads, attentionFlags]
   );
 
   const filtered = useMemo(() => {
@@ -87,9 +129,10 @@ export default function LeadsAdminClient({
         l.buyer_name.toLowerCase().includes(search.toLowerCase()) ||
         (l.buyer_phone ?? "").includes(search);
       const matchesStage = !stageFilter || l.status === stageFilter;
-      return matchesSearch && matchesStage;
+      const matchesAttention = !attentionOnly || attentionFlags.has(l.id);
+      return matchesSearch && matchesStage && matchesAttention;
     });
-  }, [leads, search, stageFilter, view]);
+  }, [leads, search, stageFilter, view, attentionOnly, attentionFlags]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -257,6 +300,9 @@ export default function LeadsAdminClient({
               setConfirmArchiveId(null);
               setConfirmRestoreId(null);
               setSaveError("");
+              // "Needs attention" only applies to live leads; carrying it
+              // into the Archived view would silently hide archived rows.
+              setAttentionOnly(false);
             }}
             className={`-mb-px border-b pb-3 text-xs uppercase tracking-[0.15em] font-light transition-colors duration-300 ${
               view === tab.key
@@ -289,6 +335,23 @@ export default function LeadsAdminClient({
               </option>
             ))}
           </select>
+          {/* A filter, not a dashboard: it narrows the existing list to the
+              leads waiting on someone, using the same rule the per-row flags
+              show. Hidden in the Archived view, where "needs attention" is
+              meaningless. */}
+          {view === "active" && (
+            <button
+              type="button"
+              onClick={() => setAttentionOnly((v) => !v)}
+              className={`text-xs uppercase tracking-[0.15em] font-light whitespace-nowrap transition-colors duration-300 ${
+                attentionOnly
+                  ? "text-brand-gold"
+                  : "text-brand-muted hover:text-brand-black"
+              }`}
+            >
+              Needs attention ({attentionCount})
+            </button>
+          )}
         </div>
         <button
           onClick={() => setFormOpen((v) => !v)}
@@ -331,6 +394,22 @@ export default function LeadsAdminClient({
             {properties.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.title}
+              </option>
+            ))}
+          </select>
+          {/* The single most important field on this form. A WhatsApp
+              enquiry, a referral or a walk-in never touches /api/leads, so
+              this is the only place their real origin is ever recorded. */}
+          <select
+            required
+            value={newLead.lead_source}
+            onChange={(e) => setNewLead((p) => ({ ...p, lead_source: e.target.value }))}
+            className="input-light"
+          >
+            <option value="">Where did this lead come from?</option>
+            {LEAD_SOURCES.map((s) => (
+              <option key={s} value={s}>
+                {LEAD_SOURCE_LABELS[s]}
               </option>
             ))}
           </select>
@@ -378,6 +457,14 @@ export default function LeadsAdminClient({
                   <p className="text-xs font-light text-brand-muted mt-0.5">
                     {[l.buyer_phone, l.buyer_email].filter(Boolean).join(" · ") || "—"}
                   </p>
+                  {/* Attention flags. Restrained on purpose — a thin gold
+                      line of text, not a coloured pill or a badge. Hidden on
+                      archived rows, where none of it is actionable. */}
+                  {view === "active" && attentionFlags.has(l.id) && (
+                    <p className="text-[10px] uppercase tracking-[0.15em] font-light text-brand-gold mt-1.5">
+                      {attentionFlags.get(l.id)!.join(" · ")}
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex flex-wrap items-center gap-4">
@@ -473,6 +560,84 @@ export default function LeadsAdminClient({
                     </button>
                   )}
                 </div>
+              </div>
+
+              {/* P1 tracking row — source, assignment time, contact, follow-up.
+                  Kept to one quiet line of small text so the list still reads
+                  as a list rather than a dashboard. */}
+              <div className="mt-4 flex flex-wrap items-center gap-x-8 gap-y-3 text-[11px] font-light text-brand-muted">
+                <span className="flex items-center gap-2">
+                  <span className="text-[10px] uppercase tracking-[0.15em]">Source</span>
+                  {/* Editable: the admin is the only person who can correct a
+                      channel that was logged wrong, or fill one in on a lead
+                      that predates this field. */}
+                  <select
+                    value={l.lead_source ?? ""}
+                    onChange={(e) =>
+                      updateLead(l.id, { lead_source: e.target.value || null })
+                    }
+                    className="bg-transparent text-brand-black border-b border-brand-border focus:border-brand-gold outline-none py-0.5 transition-colors duration-300"
+                  >
+                    <option value="">Not recorded</option>
+                    {LEAD_SOURCES.map((s) => (
+                      <option key={s} value={s}>
+                        {LEAD_SOURCE_LABELS[s]}
+                      </option>
+                    ))}
+                  </select>
+                </span>
+
+                <span>
+                  <span className="text-[10px] uppercase tracking-[0.15em]">Assigned</span>{" "}
+                  {/* Read-only everywhere: assigned_at is written by the
+                      leads_assignment_timestamp trigger from
+                      assigned_broker_id, never by this UI. */}
+                  <span className="text-brand-black">
+                    {l.assigned_broker_id ? formatDate(l.assigned_at) : "—"}
+                  </span>
+                </span>
+
+                <span className="flex items-center gap-2">
+                  <span className="text-[10px] uppercase tracking-[0.15em]">Contacted</span>
+                  <span className="text-brand-black">{formatDateTime(l.contacted_at)}</span>
+                  {/* Sends intent, not a timestamp — the server stamps it.
+                      Separate from the stage dropdown on purpose: the stage is
+                      a label someone chose, this is a record that contact
+                      actually happened. */}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      updateLead(l.id, {
+                        // The value is ignored by the server, which generates
+                        // its own timestamp — it is sent so the optimistic
+                        // render has a real date to display rather than a
+                        // placeholder. Same arrangement as archive below.
+                        contacted_at: l.contacted_at
+                          ? null
+                          : new Date().toISOString(),
+                      })
+                    }
+                    className="text-[10px] uppercase tracking-[0.15em] text-brand-gold hover:text-brand-gold/70 transition-colors"
+                  >
+                    {l.contacted_at ? "Clear" : "Mark contacted"}
+                  </button>
+                </span>
+
+                <span className="flex items-center gap-2">
+                  <span className="text-[10px] uppercase tracking-[0.15em]">Follow-up</span>
+                  <input
+                    type="date"
+                    value={toDateInputValue(l.next_action_at)}
+                    onChange={(e) =>
+                      updateLead(l.id, { next_action_at: e.target.value || null })
+                    }
+                    className={`bg-transparent border-b outline-none py-0.5 transition-colors duration-300 focus:border-brand-gold ${
+                      isFollowUpDue(l.next_action_at, nowMs)
+                        ? "border-brand-gold text-brand-gold"
+                        : "border-brand-border text-brand-black"
+                    }`}
+                  />
+                </span>
               </div>
 
               {expandedId === l.id && (

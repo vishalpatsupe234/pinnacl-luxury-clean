@@ -6,7 +6,11 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const SHEET_ID = process.env.GOOGLE_SHEET_ID;
-const SHEET_RANGE = process.env.GOOGLE_SHEET_RANGE || "Sheet1!A:G";
+// Widened from A:G to A:H for the Source column added in P1. The env var
+// still overrides it, so a deployment pinned to A:G keeps working — Sheets
+// treats the range as a hint for locating the table, and the row written is
+// as wide as the values array, so the source lands in column H either way.
+const SHEET_RANGE = process.env.GOOGLE_SHEET_RANGE || "Sheet1!A:H";
 const SERVICE_ACCOUNT_JSON = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL;
@@ -123,6 +127,43 @@ const MAX_LENGTHS = {
   propertyId: 150,
   message: 3000,
 } as const;
+
+// ============================================================
+// Lead source for this endpoint — fixed server-side, never read from the
+// request body.
+//
+// All three public forms (EnquirySection, /contact, PropertyDetails) post
+// here, and all three are the website, so there is nothing for a caller to
+// tell us that the server does not already know. Accepting a `source` field
+// would mean trusting an anonymous, unauthenticated request to label its own
+// origin — which is exactly the input a spammer or a competitor would forge,
+// and it would corrupt the one number this column exists to produce.
+//
+// The consequence, stated plainly: a visitor who arrives from an Instagram
+// ad and submits the contact form is recorded as 'website', not 'instagram'.
+// Distinguishing those requires capturing UTM parameters at page load and
+// carrying them through the form, which is a campaign-attribution feature and
+// was explicitly out of scope for P1. Off-platform channels (WhatsApp,
+// referrals, walk-ins) never reach this route at all — they are logged by the
+// admin at manual entry, where the source dropdown records the real origin.
+// ============================================================
+const PUBLIC_FORM_LEAD_SOURCE = "website" as const;
+
+// Google Sheets remains a write-only BACKUP LOG, not a CRM. Supabase is the
+// canonical source of truth for every lead, and nothing in the CRM — stage,
+// assignment, notes, contact time, follow-up, archive — is mirrored here.
+// The Source column is added so the backup matches what was stored, not so
+// the sheet can be worked out of.
+const SHEET_HEADERS = [
+  "Timestamp",
+  "Name",
+  "Phone",
+  "Email",
+  "Location",
+  "Message",
+  "Property ID",
+  "Source",
+];
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // Permissive on purpose: accepts "+91 9876543210", "9876543210",
@@ -379,6 +420,7 @@ export async function POST(request: Request) {
         message: location ? `${message}\n\nInterested location: ${location}`.trim() : message || null,
         property_id: resolvedPropertyId,
         status: "new",
+        lead_source: PUBLIC_FORM_LEAD_SOURCE,
       });
 
       if (leadError) {
@@ -426,19 +468,23 @@ export async function POST(request: Request) {
       const sheets = google.sheets({ version: "v4", auth });
 
       // Initialize headers if they don't exist. Already non-fatal.
+      //
+      // Now also repairs a 7-column header row left by the pre-P1 version,
+      // so the Source values appended below are not stranded under a blank
+      // column H. A sheet that already has 8 headers is left alone.
       try {
         const headerCheckResponse = await sheets.spreadsheets.values.get({
           spreadsheetId: SHEET_ID,
-          range: "Sheet1!A1:G1",
+          range: "Sheet1!A1:H1",
         });
 
-        if (!headerCheckResponse.data.values || headerCheckResponse.data.values.length === 0) {
-          const headers = [["Timestamp", "Name", "Phone", "Email", "Location", "Message", "Property ID"]];
+        const existingHeaders = headerCheckResponse.data.values?.[0] ?? [];
+        if (existingHeaders.length < SHEET_HEADERS.length) {
           await sheets.spreadsheets.values.update({
             spreadsheetId: SHEET_ID,
-            range: "Sheet1!A1:G1",
+            range: "Sheet1!A1:H1",
             valueInputOption: "RAW",
-            requestBody: { values: headers },
+            requestBody: { values: [SHEET_HEADERS] },
           });
         }
       } catch (err) {
@@ -458,7 +504,18 @@ export async function POST(request: Request) {
         range: SHEET_RANGE,
         valueInputOption: "RAW",
         requestBody: {
-          values: [[timestamp, name, phone, email, location, message, propertyId]],
+          values: [
+            [
+              timestamp,
+              name,
+              phone,
+              email,
+              location,
+              message,
+              propertyId,
+              PUBLIC_FORM_LEAD_SOURCE,
+            ],
+          ],
         },
       });
     } catch (err) {
