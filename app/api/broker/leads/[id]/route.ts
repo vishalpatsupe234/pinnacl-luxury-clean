@@ -3,6 +3,7 @@ import { serverErrorResponse } from "@/lib/api/serverErrorResponse";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionProfile } from "@/lib/supabase/getSessionProfile";
 import { isLeadStage, type Database } from "@/lib/supabase/types";
+import { parseRequirementFields } from "@/lib/leads/requirementFields";
 
 type Params = { params: Promise<{ id: string }> };
 type LeadUpdate = Database["public"]["Tables"]["leads"]["Update"];
@@ -48,7 +49,7 @@ export async function GET(_request: Request, { params }: Params) {
     const { data, error } = await supabase
       .from("leads")
       .select(
-        "id, property_id, buyer_name, buyer_phone, buyer_email, message, status, lead_source, assigned_at, contacted_at, next_action_at, created_at"
+        "id, property_id, buyer_name, buyer_phone, buyer_email, message, status, lead_source, assigned_at, contacted_at, next_action_at, budget_min, budget_max, configuration, preferred_locality, purpose, timeline, financing_status, created_at"
       )
       .eq("id", id)
       .eq("assigned_broker_id", user.id)
@@ -95,15 +96,23 @@ export async function PATCH(request: Request, { params }: Params) {
       return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
     }
 
-    // A broker's writable surface is exactly three columns, and this route
-    // will only ever build an update from these three keys. It is the same
-    // set the leads_broker_column_guard database trigger enforces, stated
-    // twice on purpose: this route is the convenient boundary, the trigger is
-    // the one that also holds when someone bypasses the route and calls
-    // PostgREST directly with their own session (finding R1).
+    // A broker's writable surface is the pipeline stage, their own contact and
+    // follow-up timestamps, and the buyer's requirements. This route builds an
+    // update from those keys only.
     //
-    // Everything else on a lead — the buyer's details, the enquiry message,
-    // property attribution, assignment, archive state — stays admin-owned.
+    // Why requirements belong here: the broker on the call is the person who
+    // collects them. Making them admin-only would mean the data never gets
+    // captured at the moment it is learned.
+    //
+    // At the data layer this needs no change, and none was made.
+    // enforce_lead_broker_column_guard() is a DENY-LIST of eleven protected
+    // columns, so columns added to the table are implicitly broker-writable.
+    // The eleven it protects — buyer contact details, the enquiry message,
+    // property attribution, assignment, lead_source, assigned_at, deleted_at,
+    // created_at — remain exactly as protected as the 2026-09-30 C3 run
+    // verified them. Nothing here widens that.
+    //
+    // Everything outside those two sets stays admin-owned.
     const update: LeadUpdate = {};
 
     if ("status" in body) {
@@ -137,6 +146,13 @@ export async function PATCH(request: Request, { params }: Params) {
       }
       update.next_action_at = nextAction.value;
     }
+
+    // Buyer requirements, through the same shared parser the admin route uses.
+    const requirements = parseRequirementFields(body);
+    if (!requirements.ok) {
+      return NextResponse.json({ error: requirements.error }, { status: 400 });
+    }
+    Object.assign(update, requirements.patch);
 
     // An empty patch would otherwise issue a no-op UPDATE and return 200,
     // telling the UI a change succeeded when nothing was sent.

@@ -9,6 +9,7 @@ import {
   isFollowUpDue,
   toDateInputValue,
 } from "@/lib/leads/leadDisplay";
+import LeadRequirementsPanel from "@/components/LeadRequirementsPanel";
 
 type Lead = {
   id: string;
@@ -23,6 +24,13 @@ type Lead = {
   assigned_at: string | null;
   contacted_at: string | null;
   next_action_at: string | null;
+  budget_min: number | null;
+  budget_max: number | null;
+  configuration: string | null;
+  preferred_locality: string | null;
+  purpose: string | null;
+  timeline: string | null;
+  financing_status: string | null;
   created_at: string;
 };
 
@@ -56,6 +64,10 @@ export default function LeadsBrokerClient({ initialLeads }: { initialLeads: Lead
   // different answer and could flip a follow-up's styling mid-interaction;
   // holding it in state keeps the row stable for the life of the page.
   const [nowMs] = useState(() => Date.now());
+  // Requirement panel state, matching the admin client.
+  const [reqExpandedId, setReqExpandedId] = useState<string | null>(null);
+  const [savingReq, setSavingReq] = useState(false);
+  const [reqError, setReqError] = useState("");
 
   const filtered = useMemo(() => {
     return leads.filter((l) => {
@@ -107,6 +119,50 @@ export default function LeadsBrokerClient({ initialLeads }: { initialLeads: Lead
       }
     } catch {
       rollback();
+    }
+  }
+
+  // Requirements are broker-writable by design: the broker on the call is the
+  // person who learns them. The broker API accepts these seven fields and the
+  // column guard permits them; nothing protected was widened.
+  async function handleSaveRequirements(
+    leadId: string,
+    patch: Record<string, unknown>
+  ) {
+    setSavingReq(true);
+    setReqError("");
+    try {
+      const res = await fetch(`/api/broker/leads/${leadId}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setReqError(data?.error || "Could not save the requirement.");
+        return;
+      }
+      setLeads((prev) =>
+        prev.map((l) =>
+          l.id === leadId
+            ? {
+                ...l,
+                budget_min: patch.budget_min === "" ? null : Number(patch.budget_min),
+                budget_max: patch.budget_max === "" ? null : Number(patch.budget_max),
+                configuration: (patch.configuration as string) || null,
+                preferred_locality: (patch.preferred_locality as string) || null,
+                purpose: (patch.purpose as string) || null,
+                timeline: (patch.timeline as string) || null,
+                financing_status: (patch.financing_status as string) || null,
+              }
+            : l
+        )
+      );
+      setReqExpandedId(null);
+    } catch {
+      setReqError("Could not save the requirement.");
+    } finally {
+      setSavingReq(false);
     }
   }
 
@@ -177,6 +233,15 @@ export default function LeadsBrokerClient({ initialLeads }: { initialLeads: Lead
                       </option>
                     ))}
                   </select>
+                  <button
+                    onClick={() => {
+                      setReqError("");
+                      setReqExpandedId(reqExpandedId === l.id ? null : l.id);
+                    }}
+                    className="text-xs uppercase tracking-[0.15em] font-light text-brand-gold hover:text-brand-gold/70 transition-colors whitespace-nowrap"
+                  >
+                    {reqExpandedId === l.id ? "Hide" : "Requirement"}
+                  </button>
                   <Link
                     href={`/broker/leads/${l.id}`}
                     className="text-xs uppercase tracking-[0.15em] font-light text-brand-gold hover:text-brand-gold/70 transition-colors whitespace-nowrap"
@@ -237,6 +302,18 @@ export default function LeadsBrokerClient({ initialLeads }: { initialLeads: Lead
                   />
                 </span>
               </div>
+
+              {reqExpandedId === l.id && (
+                <div className="mt-5 pl-0 md:pl-4 border-l-0 md:border-l border-brand-border">
+                  <LeadRequirementsPanel
+                    key={l.id}
+                    values={l}
+                    onSave={(patch) => handleSaveRequirements(l.id, patch)}
+                    saving={savingReq}
+                    error={reqError}
+                  />
+                </div>
+              )}
             </div>
           ))}
         </div>

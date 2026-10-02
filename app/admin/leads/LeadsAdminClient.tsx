@@ -8,6 +8,7 @@ import {
   isFollowUpDue,
   toDateInputValue,
 } from "@/lib/leads/leadDisplay";
+import LeadRequirementsPanel from "@/components/LeadRequirementsPanel";
 
 type Lead = {
   id: string;
@@ -22,6 +23,13 @@ type Lead = {
   assigned_at: string | null;
   contacted_at: string | null;
   next_action_at: string | null;
+  budget_min: number | null;
+  budget_max: number | null;
+  configuration: string | null;
+  preferred_locality: string | null;
+  purpose: string | null;
+  timeline: string | null;
+  financing_status: string | null;
   created_at: string;
   deleted_at: string | null;
 };
@@ -98,6 +106,10 @@ export default function LeadsAdminClient({
   const [confirmRestoreId, setConfirmRestoreId] = useState<string | null>(null);
   const [archivingId, setArchivingId] = useState<string | null>(null);
   const [attentionOnly, setAttentionOnly] = useState(false);
+  // Requirement panel: its own expanded row, mirroring Notes and Site Visits.
+  const [reqExpandedId, setReqExpandedId] = useState<string | null>(null);
+  const [savingReq, setSavingReq] = useState(false);
+  const [reqError, setReqError] = useState("");
 
   // "Now" is sampled ONCE, via a lazy state initializer, rather than read
   // during every render. Reading the clock inline would give each re-render a
@@ -358,6 +370,51 @@ export default function LeadsAdminClient({
     }
   }
 
+  // Requirements go through the same optimistic updateLead helper as every
+  // other admin lead edit, so rollback-on-failure behaviour is unchanged.
+  async function handleSaveRequirements(
+    leadId: string,
+    patch: Record<string, unknown>
+  ) {
+    setSavingReq(true);
+    setReqError("");
+    try {
+      const res = await fetch(`/api/admin/leads/${leadId}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setReqError(data?.error || "Could not save the requirement.");
+        return;
+      }
+      // Server-confirmed: reflect locally only after a 2xx. Budgets are
+      // normalised to numbers so the next render matches what was stored.
+      setLeads((prev) =>
+        prev.map((l) =>
+          l.id === leadId
+            ? {
+                ...l,
+                budget_min: patch.budget_min === "" ? null : Number(patch.budget_min),
+                budget_max: patch.budget_max === "" ? null : Number(patch.budget_max),
+                configuration: (patch.configuration as string) || null,
+                preferred_locality: (patch.preferred_locality as string) || null,
+                purpose: (patch.purpose as string) || null,
+                timeline: (patch.timeline as string) || null,
+                financing_status: (patch.financing_status as string) || null,
+              }
+            : l
+        )
+      );
+      setReqExpandedId(null);
+    } catch {
+      setReqError("Could not save the requirement.");
+    } finally {
+      setSavingReq(false);
+    }
+  }
+
   async function handleAddNote(leadId: string) {
     if (!noteDraft.trim()) return;
     setSavingNote(true);
@@ -597,6 +654,16 @@ export default function LeadsAdminClient({
                   </button>
 
                   <button
+                    onClick={() => {
+                      setReqError("");
+                      setReqExpandedId(reqExpandedId === l.id ? null : l.id);
+                    }}
+                    className="text-xs uppercase tracking-[0.15em] font-light text-brand-gold hover:text-brand-gold/70 transition-colors"
+                  >
+                    {reqExpandedId === l.id ? "Hide Requirement" : "Requirement"}
+                  </button>
+
+                  <button
                     onClick={() => toggleSiteVisits(l.id)}
                     className="text-xs uppercase tracking-[0.15em] font-light text-brand-gold hover:text-brand-gold/70 transition-colors"
                   >
@@ -740,6 +807,20 @@ export default function LeadsAdminClient({
                   />
                 </span>
               </div>
+
+              {/* key={l.id} remounts the panel per lead so its draft reseeds
+                  from that lead's stored values rather than leaking across rows. */}
+              {reqExpandedId === l.id && (
+                <div className="mt-5 pl-0 md:pl-4 border-l-0 md:border-l border-brand-border">
+                  <LeadRequirementsPanel
+                    key={l.id}
+                    values={l}
+                    onSave={(patch) => handleSaveRequirements(l.id, patch)}
+                    saving={savingReq}
+                    error={reqError}
+                  />
+                </div>
+              )}
 
               {/* Site visits. Append-only: recorded visits are listed, never
                   edited or removed, because the table grants no UPDATE or

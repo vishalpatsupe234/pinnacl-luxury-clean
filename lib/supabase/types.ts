@@ -112,6 +112,131 @@ export const LEAD_SOURCE_LABELS: Record<LeadSource, string> = {
   other: "Other",
 };
 
+// ============================================================
+// Buyer requirement vocabularies.
+//
+// Each array mirrors its CHECK constraint in
+// supabase/migrations/20261002090000_leads_requirement_capture.sql exactly —
+// the same two-layer arrangement as LEAD_STAGES and LEAD_SOURCES above: the
+// runtime array gives the API boundary a clean 400, the CHECK constraint is
+// the boundary that cannot be bypassed. Adding a value means editing both.
+//
+// Values are snake_case tokens rather than display strings, matching how
+// `status` and `lead_source` are stored. The LABELS maps below carry the
+// wording, so copy can change without a migration and without rewriting any
+// stored row.
+//
+// NULL (absent) is valid in the database for every one of these and means
+// "not recorded". Note the deliberate distinction on timeline and
+// financing_status: NULL means nobody asked, while 'unknown' means it was
+// asked and the buyer does not know — a different and genuinely useful fact.
+//
+// `preferred_locality` has no vocabulary on purpose: locality names are
+// hyper-local and inconsistently spelled, so it stays free text.
+// ============================================================
+export const LEAD_CONFIGURATIONS = [
+  "studio",
+  "1_bhk",
+  "2_bhk",
+  "3_bhk",
+  "4_bhk",
+  "5_plus_bhk",
+  "penthouse",
+  "villa",
+  "plot",
+  "commercial",
+  "other",
+] as const;
+
+export const LEAD_PURPOSES = ["end_use", "investment", "other"] as const;
+
+export const LEAD_TIMELINES = [
+  "immediate",
+  "1_3_months",
+  "3_6_months",
+  "6_12_months",
+  "12_plus_months",
+  "unknown",
+] as const;
+
+export const LEAD_FINANCING_STATUSES = [
+  "self_funded",
+  "home_loan",
+  "partially_funded",
+  "unknown",
+] as const;
+
+export type LeadConfiguration = (typeof LEAD_CONFIGURATIONS)[number];
+export type LeadPurpose = (typeof LEAD_PURPOSES)[number];
+export type LeadTimeline = (typeof LEAD_TIMELINES)[number];
+export type LeadFinancingStatus = (typeof LEAD_FINANCING_STATUSES)[number];
+
+/** Runtime guard for an untrusted `configuration` value from a request body. */
+export function isLeadConfiguration(value: unknown): value is LeadConfiguration {
+  return (
+    typeof value === "string" &&
+    (LEAD_CONFIGURATIONS as readonly string[]).includes(value)
+  );
+}
+
+/** Runtime guard for an untrusted `purpose` value from a request body. */
+export function isLeadPurpose(value: unknown): value is LeadPurpose {
+  return (
+    typeof value === "string" && (LEAD_PURPOSES as readonly string[]).includes(value)
+  );
+}
+
+/** Runtime guard for an untrusted `timeline` value from a request body. */
+export function isLeadTimeline(value: unknown): value is LeadTimeline {
+  return (
+    typeof value === "string" && (LEAD_TIMELINES as readonly string[]).includes(value)
+  );
+}
+
+/** Runtime guard for an untrusted `financing_status` value from a request body. */
+export function isLeadFinancingStatus(value: unknown): value is LeadFinancingStatus {
+  return (
+    typeof value === "string" &&
+    (LEAD_FINANCING_STATUSES as readonly string[]).includes(value)
+  );
+}
+
+export const LEAD_CONFIGURATION_LABELS: Record<LeadConfiguration, string> = {
+  studio: "Studio",
+  "1_bhk": "1 BHK",
+  "2_bhk": "2 BHK",
+  "3_bhk": "3 BHK",
+  "4_bhk": "4 BHK",
+  "5_plus_bhk": "5+ BHK",
+  penthouse: "Penthouse",
+  villa: "Villa",
+  plot: "Plot",
+  commercial: "Commercial",
+  other: "Other",
+};
+
+export const LEAD_PURPOSE_LABELS: Record<LeadPurpose, string> = {
+  end_use: "End use",
+  investment: "Investment",
+  other: "Other",
+};
+
+export const LEAD_TIMELINE_LABELS: Record<LeadTimeline, string> = {
+  immediate: "Immediate",
+  "1_3_months": "1–3 months",
+  "3_6_months": "3–6 months",
+  "6_12_months": "6–12 months",
+  "12_plus_months": "12+ months",
+  unknown: "Not known",
+};
+
+export const LEAD_FINANCING_STATUS_LABELS: Record<LeadFinancingStatus, string> = {
+  self_funded: "Self funded",
+  home_loan: "Home loan",
+  partially_funded: "Partially funded",
+  unknown: "Not known",
+};
+
 type GenericTable = {
   Row: Record<string, unknown>;
   Insert: Record<string, unknown>;
@@ -302,6 +427,13 @@ export type Database = {
           assigned_at: string | null;
           contacted_at: string | null;
           next_action_at: string | null;
+          budget_min: number | null;
+          budget_max: number | null;
+          configuration: LeadConfiguration | null;
+          preferred_locality: string | null;
+          purpose: LeadPurpose | null;
+          timeline: LeadTimeline | null;
+          financing_status: LeadFinancingStatus | null;
           deleted_at: string | null;
           created_at: string;
           updated_at: string;
@@ -332,6 +464,13 @@ export type Database = {
           lead_source: LeadSource | null;
           contacted_at: string | null;
           next_action_at: string | null;
+          budget_min: number | null;
+          budget_max: number | null;
+          configuration: LeadConfiguration | null;
+          preferred_locality: string | null;
+          purpose: LeadPurpose | null;
+          timeline: LeadTimeline | null;
+          financing_status: LeadFinancingStatus | null;
           deleted_at: string | null;
         }>;
         Relationships: [];

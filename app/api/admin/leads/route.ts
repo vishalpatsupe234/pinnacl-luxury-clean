@@ -29,7 +29,7 @@ export async function GET(request: Request) {
     let query = supabase
       .from("leads")
       .select(
-        "id, property_id, buyer_name, buyer_phone, buyer_email, message, assigned_broker_id, status, lead_source, assigned_at, contacted_at, next_action_at, created_at, deleted_at"
+        "id, property_id, buyer_name, buyer_phone, buyer_email, message, assigned_broker_id, status, lead_source, assigned_at, contacted_at, next_action_at, budget_min, budget_max, configuration, preferred_locality, purpose, timeline, financing_status, created_at, deleted_at"
       )
       .order("created_at", { ascending: false });
 

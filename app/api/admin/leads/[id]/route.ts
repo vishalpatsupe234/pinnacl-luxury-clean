@@ -3,6 +3,7 @@ import { serverErrorResponse } from "@/lib/api/serverErrorResponse";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionProfile } from "@/lib/supabase/getSessionProfile";
 import { isLeadStage, isLeadSource, type Database } from "@/lib/supabase/types";
+import { parseRequirementFields } from "@/lib/leads/requirementFields";
 
 type Params = { params: Promise<{ id: string }> };
 type LeadUpdate = Database["public"]["Tables"]["leads"]["Update"];
@@ -166,6 +167,16 @@ export async function PATCH(request: Request, { params }: Params) {
       }
       update.next_action_at = nextAction.value;
     }
+
+    // Buyer requirements. Validated by the shared parser so this route and the
+    // broker route cannot disagree about what a valid requirement is. Only the
+    // keys actually present in the body are applied, so editing one field never
+    // blanks the others.
+    const requirements = parseRequirementFields(body);
+    if (!requirements.ok) {
+      return NextResponse.json({ error: requirements.error }, { status: 400 });
+    }
+    Object.assign(update, requirements.patch);
 
     // `assigned_at` is intentionally NOT accepted from the request body at
     // all. It is owned by the leads_assignment_timestamp database trigger,
