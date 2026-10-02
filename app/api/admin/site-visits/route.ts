@@ -15,6 +15,26 @@ import { getSessionProfile } from "@/lib/supabase/getSessionProfile";
 // POST. A recorded visit is immutable history — if a visit is logged wrongly,
 // the correction is a lead note explaining it, not an edit.
 
+// Asia/Kolkata as a fixed UTC offset.
+//
+// India Standard Time is UTC+05:30 year-round and observes no daylight saving,
+// so a constant offset is exact rather than an approximation. It is expressed
+// as an offset instead of going through Intl because the value is appended to
+// an ISO string before parsing, which needs a designator and not a zone name.
+//
+// This MUST stay consistent with DISPLAY_TIME_ZONE in lib/leads/leadDisplay.ts
+// ("Asia/Kolkata"). The two are the write side and the read side of the same
+// assumption; if they ever disagree, every recorded time is wrong by the
+// difference between them. That is exactly the defect this constant fixes.
+const IST_UTC_OFFSET = "+05:30";
+
+// A naive local date-time, i.e. the exact shape an <input type="datetime-local">
+// produces: "2026-10-02T07:30", optionally with seconds/fractions. Anything
+// that already carries a "Z" or a "+HH:MM"/"-HH:MM" designator does NOT match
+// and is therefore parsed unchanged, so a caller sending a proper absolute ISO
+// timestamp keeps working exactly as before.
+const NAIVE_LOCAL_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/;
+
 /**
  * Parses the caller-supplied visit date.
  *
@@ -25,12 +45,35 @@ import { getSessionProfile } from "@/lib/supabase/getSessionProfile";
  * 400 rather than reaching the column, and what gets stored is the normalised
  * ISO form of the parsed Date.
  *
- * Mirrors parseNextActionAt in the admin and broker lead routes.
+ * TIMEZONE, and why this is not just `new Date(value)`:
+ *
+ * <input type="datetime-local"> sends no timezone designator — "7:30 PM" on
+ * 2 Oct arrives as the bare string "2026-10-02T19:30". ECMAScript interprets a
+ * date-TIME form without an offset in the RUNTIME's local zone, which on Vercel
+ * is UTC. The value was therefore stored as 19:30 UTC while the admin UI renders
+ * it in Asia/Kolkata, displaying 01:00 the next morning — a silent 5h30m shift,
+ * exactly India's offset.
+ *
+ * Worse, it was invisible in development: on a machine already set to IST the
+ * same expression is correct, so the bug only ever appeared in production.
+ *
+ * The fix pins the interpretation to IST explicitly rather than inheriting
+ * whatever zone the server happens to run in. Pinning server-side (not
+ * client-side) is deliberate: the display layer is pinned to Asia/Kolkata too,
+ * so write and read now share one stated assumption, and the recorded time no
+ * longer depends on the server's TZ or on where the admin's browser is.
  */
 function parseVisitDate(value: unknown): { ok: true; value: string } | { ok: false } {
-  if (typeof value !== "string" || value === "") return { ok: false };
+  if (typeof value !== "string") return { ok: false };
 
-  const parsed = new Date(value);
+  const trimmed = value.trim();
+  if (!trimmed) return { ok: false };
+
+  const absolute = NAIVE_LOCAL_DATETIME.test(trimmed)
+    ? `${trimmed}${IST_UTC_OFFSET}`
+    : trimmed;
+
+  const parsed = new Date(absolute);
   if (Number.isNaN(parsed.getTime())) return { ok: false };
 
   return { ok: true, value: parsed.toISOString() };
