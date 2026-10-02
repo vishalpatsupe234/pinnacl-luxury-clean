@@ -13,7 +13,7 @@ const siteUrl =
 export const metadata: Metadata = {
   title: "Luxury Properties in Maharashtra",
   description:
-    "Browse luxury properties in Maharashtra with pricing and location details from Pinnacl Properties. Project registration numbers are shown on each listing where we hold them.",
+    "Residential property in Maharashtra with pricing and location details from Pinnacl Properties. Project registration numbers are shown on each listing where we hold them.",
   alternates: {
     canonical: `${siteUrl}/properties`,
   },

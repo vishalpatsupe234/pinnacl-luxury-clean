@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Pinnacl Properties | Luxury Homes in Maharashtra",
     description:
-      "Discover premium luxury residences across Maharashtra with curated advisory, transparent guidance, and trusted project selection.",
+      "Residential property in Maharashtra. Each listing publishes the project's MahaRERA registration number where we hold it.",
     url: `${siteUrl}/`,
     type: "website",
     images: [
@@ -36,7 +36,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Pinnacl Properties | Luxury Homes in Maharashtra",
     description:
-      "Discover premium luxury residences across Maharashtra with curated advisory, transparent guidance, and trusted project selection.",
+      "Residential property in Maharashtra. Each listing publishes the project's MahaRERA registration number where we hold it.",
     images: [
       "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80",
     ],

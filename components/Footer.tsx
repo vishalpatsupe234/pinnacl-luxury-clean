@@ -18,9 +18,6 @@ export default function Footer() {
                 Properties
               </span>
             </Link>
-            <p className="mt-6 text-sm font-light text-white/50 max-w-xs leading-relaxed">
-              Luxury property advisory for discerning buyers across Mumbai and Maharashtra.
-            </p>
           </div>
 
           <div className="flex gap-16 md:gap-24">
@@ -56,7 +53,6 @@ export default function Footer() {
                 Contact
               </p>
               <ul className="space-y-3 text-sm font-light text-white/60">
-                <li>Ambernath, Mumbai</li>
                 <li>
                   <a
                     href="tel:+919146238303"
@@ -79,9 +75,28 @@ export default function Footer() {
         </div>
 
         <div className="mt-16 pt-8 border-t border-white/10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <p className="text-xs font-light text-white/30">
-            &copy; {year} Pinnacl Properties. All rights reserved.
-          </p>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
+            <p className="text-xs font-light text-white/30">
+              &copy; {year} Pinnacl Properties. All rights reserved.
+            </p>
+            <span className="flex items-center gap-3 text-xs font-light text-white/40">
+              <Link
+                href="/privacy"
+                className="hover:text-brand-gold transition-colors duration-300"
+              >
+                Privacy
+              </Link>
+              <span aria-hidden="true" className="text-white/20">
+                ·
+              </span>
+              <Link
+                href="/terms"
+                className="hover:text-brand-gold transition-colors duration-300"
+              >
+                Terms
+              </Link>
+            </span>
+          </div>
           {/* Factual agent disclosure only. Renders nothing when the agent
               registration number is not configured. The previous line also
               claimed "Documentation Reviewed Per Property", which nothing in

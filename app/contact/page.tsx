@@ -47,7 +47,7 @@ export default function ContactPage() {
   }
 
   const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
-    "Hello, I would like to enquire about luxury properties with Pinnacl Properties."
+    "Hello, I would like to enquire about a property with Pinnacl Properties."
   )}`;
 
   return (
@@ -67,13 +67,12 @@ export default function ContactPage() {
                 understanding what truly suits you.
               </p>
 
+              {/* The "Office — Ambernath, Mumbai" line was removed: Ambernath is
+                  in Thane district, not Mumbai, so the line was factually wrong,
+                  and a stated service area is a coverage claim this business
+                  cannot yet support. Phone and email are the accurate, useful
+                  contact details. */}
               <div className="space-y-6">
-                <div>
-                  <p className="text-[10px] uppercase tracking-[0.25em] text-brand-muted mb-2">
-                    Office
-                  </p>
-                  <p className="text-sm font-light">Ambernath, Mumbai</p>
-                </div>
                 <div>
                   <p className="text-[10px] uppercase tracking-[0.25em] text-brand-muted mb-2">
                     Phone

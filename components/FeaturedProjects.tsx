@@ -153,10 +153,11 @@ export default function FeaturedProjects({ properties }: { properties: PropertyR
     <section className="bg-white py-24 md:py-32">
       <div className="section-shell">
         <div className="text-center mb-16 md:mb-20">
-          <p className="section-label mb-4">Curated Selection</p>
+          <p className="section-label mb-4">Selected Properties</p>
           <h2 className="section-heading">Featured Properties</h2>
           <p className="section-body mt-4 max-w-lg mx-auto">
-            Handpicked residences across Mumbai&apos;s most sought-after addresses.
+            Properties we have taken on, shown with the registration details we
+            hold on record.
           </p>
         </div>
 

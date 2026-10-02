@@ -5,14 +5,14 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://pinnaclproperties.c
 export const metadata: Metadata = {
   title: "Contact",
   description:
-    "Connect with Pinnacl Properties for guidance on luxury residential projects across Mumbai and premium locations.",
+    "Get in touch with Pinnacl Properties about residential property in Maharashtra.",
   alternates: {
     canonical: `${siteUrl}/contact`,
   },
   openGraph: {
     title: "Contact Pinnacl Properties",
     description:
-      "Schedule a private consultation with Pinnacl Properties for tailored guidance on premium Mumbai residences.",
+      "Request a private consultation with Pinnacl Properties about residential property in Maharashtra.",
     url: `${siteUrl}/contact`,
     type: "website",
   },
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     card: "summary",
     title: "Contact Pinnacl Properties",
     description:
-      "Schedule a private consultation with Pinnacl Properties for tailored guidance on premium Mumbai residences.",
+      "Request a private consultation with Pinnacl Properties about residential property in Maharashtra.",
   },
 };
 

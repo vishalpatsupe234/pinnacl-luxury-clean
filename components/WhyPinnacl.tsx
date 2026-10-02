@@ -6,27 +6,27 @@ import { motion, useReducedMotion } from "motion/react";
 const values = [
   {
     icon: Diamond,
-    title: "Luxury",
+    title: "Selective",
     description:
-      "Every project is handpicked for quality, design, and long-term value — never mass-market listings.",
+      "We present a property only after checking its approvals, the basis of its pricing, and the developer's record. If it does not hold up, we do not present it.",
   },
   {
     icon: Shield,
-    title: "Trust",
+    title: "Checkable",
     description:
-      "Documentation, pricing, and developer credentials reviewed and shared transparently — property by property, never assumed.",
+      "Where we hold a project's MahaRERA registration number, we publish it, so you can verify it on the MahaRERA portal yourself.",
   },
   {
     icon: Minimize2,
-    title: "Simplicity",
+    title: "Unhurried",
     description:
-      "A calm, guided experience from first enquiry to possession — no clutter, no pressure.",
+      "One conversation at a time, at your pace. No pressure, and no scripted follow-ups.",
   },
   {
     icon: Eye,
-    title: "Transparency",
+    title: "Direct",
     description:
-      "Clear pricing, honest advice, and complete visibility at every step of your journey.",
+      "You deal with the person doing the work. Questions about price or paperwork get a straight answer.",
   },
 ];
 

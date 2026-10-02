@@ -23,7 +23,7 @@ const organizationSchema = {
   url: siteUrl,
   logo: `${siteUrl}/favicon.ico`,
   description:
-    "Pinnacl Properties is a luxury real estate advisory operating across Mumbai and Maharashtra.",
+    "Pinnacl Properties helps buyers find and evaluate residential property in Maharashtra.",
   address: {
     "@type": "PostalAddress",
     addressLocality: "Ambernath",
@@ -51,7 +51,7 @@ export const metadata: Metadata = {
     template: "%s | Pinnacl Properties",
   },
   description:
-    "Pinnacl Properties is a luxury real estate advisory in Maharashtra. Each listing publishes the project's MahaRERA registration number where we hold it, so you can check it yourself.",
+    "Pinnacl Properties helps buyers find and evaluate residential property in Maharashtra. Each listing publishes the project's MahaRERA registration number where we hold it, so you can check it yourself.",
   keywords: [
     "Luxury homes Maharashtra",
     "Premium properties Maharashtra",
@@ -69,7 +69,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Pinnacl Properties | Luxury Homes in Maharashtra",
     description:
-      "Luxury residences across Maharashtra, presented with the project registration details we hold on record.",
+      "Residential property in Maharashtra, presented with the project registration details we hold on record.",
     url: siteUrl,
     siteName: "Pinnacl Properties",
     type: "website",
@@ -86,7 +86,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Pinnacl Properties | Luxury Homes in Maharashtra",
     description:
-      "Luxury residences across Maharashtra, presented with the project registration details we hold on record.",
+      "Residential property in Maharashtra, presented with the project registration details we hold on record.",
     images: [
       "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80",
     ],

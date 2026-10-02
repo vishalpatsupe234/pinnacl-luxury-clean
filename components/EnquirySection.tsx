@@ -46,7 +46,7 @@ export default function EnquirySection() {
   }
 
   const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
-    "Hello, I would like to enquire about luxury properties with Pinnacl Properties."
+    "Hello, I would like to enquire about a property with Pinnacl Properties."
   )}`;
 
   return (
