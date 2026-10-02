@@ -4,6 +4,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionProfile } from "@/lib/supabase/getSessionProfile";
 import { isLeadStage, isLeadSource, type Database } from "@/lib/supabase/types";
 import { parseRequirementFields } from "@/lib/leads/requirementFields";
+import { resolveBrokerEmail } from "@/lib/notifications/recipients";
+import { escapeHtml, sendInternalEmail, siteUrl } from "@/lib/notifications/send";
+import { formatDateTime } from "@/lib/leads/leadDisplay";
 
 type Params = { params: Promise<{ id: string }> };
 type LeadUpdate = Database["public"]["Tables"]["leads"]["Update"];
@@ -197,10 +200,84 @@ export async function PATCH(request: Request, { params }: Params) {
         body.deleted_at === null ? null : new Date().toISOString();
     }
 
-    const { error } = await supabase.from("leads").update(update).eq("id", id);
+    // The lead's CURRENT assignee, read only when the request touches
+    // assignment. Needed because the notification must fire on a TRANSITION,
+    // not on every write: re-saving a lead that is already assigned to the same
+    // broker must not re-notify them.
+    //
+    // Skipped entirely for stage, requirement or archive edits, so the common
+    // case costs no extra query.
+    let previousBrokerId: string | null = null;
+    if ("assigned_broker_id" in update) {
+      const { data: current } = await supabase
+        .from("leads")
+        .select("assigned_broker_id")
+        .eq("id", id)
+        .maybeSingle();
+      previousBrokerId = current?.assigned_broker_id ?? null;
+    }
+
+    // `.select()` returns the row AFTER the update, which is how assigned_at is
+    // obtained: that column is written by the leads_assignment_timestamp
+    // trigger, so it does not exist in `update` and can only be read back.
+    const { data: updated, error } = await supabase
+      .from("leads")
+      .update(update)
+      .eq("id", id)
+      .select("buyer_name, assigned_broker_id, assigned_at")
+      .maybeSingle();
 
     if (error) {
       return serverErrorResponse("ADMIN LEAD UPDATE ERROR:", error);
+    }
+
+    // ----------------------------------------------------------
+    // Assignment notification — ISOLATED AND NEVER FATAL.
+    //
+    // The assignment is already committed by this point. sendInternalEmail
+    // never throws and reports failure as a value, and the whole block is
+    // wrapped as well, so no email outcome can turn a successful assignment
+    // into a 500 or alter the response.
+    //
+    // Fires only on a genuine transition to a broker:
+    //   null -> B   notify B
+    //   A    -> B   notify B
+    //   A    -> A   nothing (value unchanged)
+    //   B    -> null  nothing (no recipient, and nothing was assigned)
+    //
+    // The recipient is resolved from profiles + auth.users, never from the
+    // request body, and an ineligible broker (suspended, rejected, pending,
+    // soft-deleted) resolves to null and is silently not contacted.
+    // ----------------------------------------------------------
+    const newBrokerId = updated?.assigned_broker_id ?? null;
+    if (newBrokerId && newBrokerId !== previousBrokerId) {
+      try {
+        const to = await resolveBrokerEmail(newBrokerId);
+        if (to) {
+          const base = siteUrl();
+          const assignedAt = updated?.assigned_at
+            ? formatDateTime(updated.assigned_at)
+            : "just now";
+
+          await sendInternalEmail({
+            to,
+            subject: "Pinnacl — a lead has been assigned to you",
+            html: `
+      <h1>New lead assigned to you</h1>
+      <p><strong>Buyer:</strong> ${escapeHtml(updated?.buyer_name ?? "")}</p>
+      <p><strong>Assigned:</strong> ${escapeHtml(assignedAt)}</p>
+      <p>Open <a href="${base}/broker/leads">My Leads</a> to record the requirement, mark the lead contacted, and set the next follow-up.</p>
+    `,
+            stage: "lead_assigned",
+          });
+        }
+      } catch (notifyError) {
+        console.error(
+          "notify_error",
+          "lead_assigned_block_failed",
+          notifyError instanceof Error ? notifyError.message : "unknown error"
+        );
+      }
     }
 
     return NextResponse.json({ ok: true });

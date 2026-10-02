@@ -4,6 +4,7 @@ import { google } from "googleapis";
 import { Resend } from "resend";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { sendInternalEmail } from "@/lib/notifications/send";
 
 const SHEET_ID = process.env.GOOGLE_SHEET_ID;
 // Widened from A:G to A:H for the Source column added in P1. The env var
@@ -568,6 +569,38 @@ export async function POST(request: Request) {
         "resend_send_failed",
         err instanceof Error ? err.message : "unknown error"
       );
+    }
+
+    // ----------------------------------------------------------
+    // STEP 6 — CUSTOMER ACKNOWLEDGEMENT. Isolated, never fatal.
+    //
+    // The only customer-facing automation in this system, and deliberately the
+    // narrowest possible one: it confirms receipt of an enquiry the customer
+    // just submitted. Transactional, expected, sent once, in direct response to
+    // their own action.
+    //
+    // It makes NO property recommendation, quotes NO price, promises NO
+    // timeline and starts NO sequence. Everything beyond "we received this and
+    // a person will call you" stays human — that advisory conversation is the
+    // product, and automating it would damage the thing being sold.
+    //
+    // Sent only when the buyer gave an email. Validation upstream requires a
+    // name plus phone OR email, so an email is not guaranteed to exist.
+    //
+    // Failure cannot affect the stored lead: the insert committed above, and
+    // sendInternalEmail never throws.
+    // ----------------------------------------------------------
+    if (email) {
+      await sendInternalEmail({
+        to: email,
+        subject: "We've received your enquiry — Pinnacl Properties",
+        html: `
+      <p>Dear ${escapeHtml(name)},</p>
+      <p>Thank you for your enquiry. We have received your request and a member of our team will contact you shortly.</p>
+      <p>— Pinnacl Properties</p>
+    `,
+        stage: "customer_acknowledgement",
+      });
     }
 
     return NextResponse.json({ ok: true }, { status: 200 });

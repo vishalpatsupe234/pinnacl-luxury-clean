@@ -71,6 +71,44 @@ export function toDateInputValue(value: string | null | undefined): string {
 }
 
 /**
+ * The Asia/Kolkata calendar date of a timestamp, as "YYYY-MM-DD".
+ *
+ * This is the ONLY correct way to compare `next_action_at` against "today",
+ * and the reason is a real bug class rather than pedantry.
+ *
+ * `next_action_at` is set from an <input type="date">, so "3 October" is stored
+ * as 2026-10-03T00:00:00Z — UTC midnight. In IST that instant is 05:30 on the
+ * 3rd, which is correct. But comparing the raw timestamp against `Date.now()`
+ * would report it as already past for the whole of the 2nd in UTC terms, and a
+ * reminder for the 3rd would fire on the 2nd.
+ *
+ * Reducing both sides to an IST calendar date removes the ambiguity entirely:
+ *   istDateKey(next_action_at) === istDateKey(now)  -> due today
+ *   istDateKey(next_action_at) <  istDateKey(now)   -> overdue
+ * String comparison is safe because YYYY-MM-DD sorts lexicographically.
+ *
+ * Lives here, beside DISPLAY_TIME_ZONE, so the project has exactly one
+ * definition of "the timezone this business operates in". A second copy
+ * elsewhere is how the two sides drift apart.
+ *
+ * Returns null for an absent or unparseable value.
+ */
+export function istDateKey(value: string | number | Date | null | undefined): string | null {
+  if (value === null || value === undefined || value === "") return null;
+
+  const parsed = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+
+  // en-CA yields exactly YYYY-MM-DD, the same reason toDateInputValue uses it.
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: DISPLAY_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(parsed);
+}
+
+/**
  * Days elapsed since a timestamp, or null when it is absent/unparseable.
  * `nowMs` is passed in rather than read from the clock here so the caller
  * controls when "now" is sampled — see the hydration note in the clients.

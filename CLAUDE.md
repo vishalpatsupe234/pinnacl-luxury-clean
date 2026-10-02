@@ -234,6 +234,9 @@ app/broker/properties/[id]/page.tsx     → "/broker/properties/:id"      [gated
 app/api/admin/properties/route.ts       → GET/POST, no rendering
 app/api/admin/properties/[id]/route.ts  → GET/PATCH/DELETE, no rendering
 app/api/broker/properties/route.ts      → GET, no rendering
+
+-- Follow-up automation, Phase 1 (see "Follow-up Automation" below) --
+app/api/jobs/daily/route.ts             → GET, cron-only, no rendering
 ```
 
 ### Authentication (Implemented, code-level — see environment note above)
@@ -243,7 +246,7 @@ Real Supabase Auth-backed authentication now exists, strictly scoped to the invi
 **Supabase client utilities (`lib/supabase/`):**
 - `client.ts` — browser client (anon/publishable key only, safe for client bundles).
 - `server.ts` — server client for Server Components/Route Handlers (anon key + cookies via `@supabase/ssr`; access control comes from RLS, not this client).
-- `admin.ts` — **service-role client. Used in exactly one place in the codebase** (`app/api/broker/accept-invite/route.ts`'s account-creation step) — guarded with the `server-only` package so importing it from any client-reachable file is a build-time error, not just a convention. `SUPABASE_SERVICE_ROLE_KEY` (no `NEXT_PUBLIC_` prefix) lives only in `.env.local`.
+- `admin.ts` — **service-role client. Used in exactly four places in the codebase** (corrected 2026-10-02; the earlier "exactly one place" claim was stale): `app/api/broker/accept-invite/route.ts` (account creation), `app/api/leads/route.ts` (property slug→id lookup), `app/api/jobs/daily/route.ts` (the daily follow-up job's reads), and `lib/notifications/recipients.ts` (resolving a broker's email from `auth.users`, since `public.profiles` has no email column). Guarded with the `server-only` package so importing it from any client-reachable file is a build-time error, not just a convention. `SUPABASE_SERVICE_ROLE_KEY` (no `NEXT_PUBLIC_` prefix) lives only in `.env.local`. Each addition is an explicit least-privilege decision — see the file's own header.
 - `getSessionProfile.ts` — shared helper (current user + their `profiles` row), reused by every gated page/route instead of re-implementing the check per file.
 - `types.ts` — hand-written `Database` type. Fully typed: `profiles`, `invites` (broker-auth), `properties`, `builders` (Property Listings CMS). `leads`, `lead_notes`, `site_visits` were typed during later Lead Management CRM work. `deals`, `commission_ledger`, `audit_log` remain typed generically since no task has touched them yet, as do the Stage 1 tables. ~~Regenerate once CLI access exists~~ — **the CLI is now available (2.117.0)**, so `supabase gen types typescript` is a real option; it has not been run, and the file remains hand-maintained.
 
@@ -287,6 +290,56 @@ _Historical — superseded by Stage 0 (2026-09-21):_ this migration also added `
 **~~Known, deliberately untouched gap~~ — RESOLVED by Stage 0 (2026-09-21).** _Historical — superseded by Stage 0 (2026-09-21):_ the original RLS migration granted a broker INSERT and UPDATE on their *own* pending listings via `properties_broker_insert_own` and `properties_broker_update_own_pending` — a leftover from the earlier "broker uploads their own inventory" vision. The CMS UI never exercised that path, but the RLS capability was live underneath, so a broker could have written to `properties` directly with only their own session and the public key.
 
 **Both policies were dropped by `20260921090000_broker_property_scope_stage0.sql`.** Broker access to `properties` is now **read-only end-to-end — in the UI and at the data layer.** No broker write path exists in RLS. Re-add scoped write policies when the Stage 3 submission workflow lands; until then, absence of the policy is the control.
+
+### Follow-up Automation — Phase 1 (Implemented 2026-10-02, code-level; not yet deployed)
+
+Lightweight notification automation whose single purpose is: **never let an existing lead or follow-up be silently forgotten.** It does not attempt to create demand, and it does not act on a customer's behalf.
+
+**Architecture — deliberately no orchestration platform:**
+
+```
+Vercel Cron (vercel.json, "30 2 * * *" = 02:30 UTC = 08:00 IST)
+  └── GET /api/jobs/daily   [Authorization: Bearer CRON_SECRET]
+        ├── service-role SELECT on leads + site_visits   (READ ONLY)
+        ├── buckets: uncontacted >24h · due today · overdue · unassigned · visits today
+        └── Resend: one email per broker with items, plus one founder digest
+```
+
+**What runs where:**
+
+| Automation | Trigger | Recipient | Implementation |
+|---|---|---|---|
+| New-lead owner notification | `POST /api/leads` | founder (`OWNER_NOTIFICATION_EMAIL`) | pre-existing, unchanged |
+| **Customer acknowledgement** | `POST /api/leads`, only when the buyer supplied an email | the buyer | inline, after the owner email |
+| **Lead assignment notification** | `PATCH /api/admin/leads/[id]` when `assigned_broker_id` changes **to** a broker | that broker | inline in the admin route |
+| **First-contact SLA reminder** | daily job: assigned, `contacted_at is null`, `assigned_at` older than 24h | assigned broker | `/api/jobs/daily` |
+| **`next_action_at` reminder** | daily job: IST calendar date equals today | assigned broker, else founder | `/api/jobs/daily` |
+| **Overdue follow-up alert** | daily job: IST calendar date before today | assigned broker, and founder for unassigned | `/api/jobs/daily` |
+| **Daily founder digest** | daily job | founder | `/api/jobs/daily` |
+
+**`CRON_SECRET` (new, required).** `GET /api/jobs/daily` accepts only `Authorization: Bearer <CRON_SECRET>`; anything else is a bare `401 {"error":"Unauthorized"}` that reveals nothing about the value. It **fails closed**: while the variable is unset every request is rejected, including Vercel's own cron, so a misconfiguration disables the job rather than leaving a publicly callable endpoint that anyone could use to trigger our notification emails. Documented in `.env.example`; the value lives only in the environment.
+
+**The daily job is READ-ONLY against the CRM.** It issues `SELECT` only and never writes `status`, `assigned_broker_id`, `contacted_at`, `next_action_at`, `lead_source`, buyer fields, requirement fields or `deleted_at`. It cannot advance a lead, mark anything contacted, or archive anything. This is a deliberate safety property: an automation that only reminds cannot corrupt the pipeline it reminds about, however wrong its logic proves to be.
+
+**State-derived, not queued.** Every list is recomputed from current table state on each run, so a missed run self-heals on the next one and nothing is mutated to record "already emailed." **Accepted consequence: there is no email de-duplication** — if the cron fires twice in a day, the same reminders are sent twice. Doing it properly needs a `notification_log` table, deliberately excluded from this phase; at one or two emails a day a duplicate is noise, not damage.
+
+**Email failure isolation.** All sends go through `lib/notifications/send.ts`, whose contract is that **it never throws** — it reports failure as a value. Every caller sends only after a database write has already committed, so no email outcome can undo one or turn it into a 500: lead creation succeeds without the acknowledgement, assignment succeeds without the broker email, and the daily job returns 200 with full counts even when every send fails. Verified 2026-10-02 by running the job with `RESEND_API_KEY` deliberately empty: HTTP 200, correct counts, `founderEmailSent: false`.
+
+**Timezone.** `next_action_at` is set from an `<input type="date">` and stored as UTC midnight, so due/overdue are compared on the **Asia/Kolkata calendar date** via `istDateKey()` in `lib/leads/leadDisplay.ts` — never on raw UTC timestamps, which would fire a reminder for the 3rd during the 2nd. That helper lives beside `DISPLAY_TIME_ZONE` so the project keeps exactly one definition of its operating timezone.
+
+**Recipient security.** No address is ever taken from a request body. Brokers are resolved by `lib/notifications/recipients.ts` from `profiles` (role in `verified_broker`/`sales_partner`, `status = 'active'`, `deleted_at is null`) and then `auth.users` via the Admin Auth API, because **`public.profiles` has no email column**. A suspended, rejected, pending or soft-deleted account resolves to null and is therefore unreachable by any notification. The founder's address is `OWNER_NOTIFICATION_EMAIL`, not the `super_admin`'s `auth.users` email, which in this project is a non-deliverable placeholder.
+
+**New files:** `vercel.json`, `app/api/jobs/daily/route.ts`, `lib/notifications/send.ts`, `lib/notifications/recipients.ts`.
+
+### Automation platform decision (2026-10-02)
+
+**Pinnacl deliberately does NOT use n8n, Make, Zapier, Inngest, Trigger.dev, Temporal, or any external orchestration platform at this stage.** All automation logic stays in this repository, in TypeScript, under code review and versioned with git.
+
+Reasoning, measured rather than assumed: at the time of the decision the live system had **1 active lead, 1 eligible broker recipient, 0 confirmed inventory**, and every one of the eleven candidate automations fired on at most 1–3 records per day. An orchestration platform is infrastructure for workflow volume and variety that does not yet exist. Three specific costs applied to n8n in particular: business logic would leave the repository (adding a third, unversioned definition of rules already expressed in `leads_status_check` and the TypeScript whitelists); it would require a second system holding the service-role key, currently confined to `server-only` modules; and workflows living outside the product would not travel with it if the CRM is ever sold as a SaaS.
+
+**Adopting an orchestration platform later requires its own architecture decision and owner approval — it must not be introduced incidentally.** The conditions that would justify revisiting: more than roughly six distinct workflows, **and** at least one needing durable multi-step execution with a human wait in the middle (site-visit confirm → reminder → outcome capture is the likely first). At that point **Inngest or Trigger.dev is preferred over n8n**, because their functions live in-repo and keys stay in Vercel; n8n wins only if a non-developer must edit flows visually, or many third-party connectors we do not own are needed.
+
+**Explicitly not built in Phase 1:** no-response escalation, per-broker digest separate from the founder digest, site-visit reminders, post-visit follow-up, lost-lead reactivation, WhatsApp (any form), AI, lead scoring, automatic reassignment, notification de-duplication, and any automated lead mutation whatsoever.
 
 ---
 
@@ -641,6 +694,8 @@ _Verified by direct code inspection and grep during the 2026-08-16 audit. Fully 
 | **F17 — legacy JSON property data and public `GET /api/properties` endpoint removed**: `app/api/properties/route.ts` (which read `data/properties.json` and, on failure, returned raw `String(err)` at HTTP 500 to any anonymous caller) and `data/properties.json` (3 placeholder listings) were deleted. A repo-wide search found zero runtime callers — all 21 `fetch()` calls in `app/`, `components/` and `lib/` target `/api/admin/*`, `/api/broker/*` or `/api/leads`, and the only other references were docs, backup files and a build cache. The public property surfaces already read Supabase (homepage featured properties, `/properties`, `/properties/[slug]`, `sitemap.ts`), `/projects` redirects to `/properties`, and the JSON file's only consumer was the endpoint itself. The tracked backup `app/api/properties/route.ts.bak.20251212005523` was removed in a follow-up hygiene pass (2026-09-19, after confirming no reference in imports, config or tooling); the other tracked backup, `app/properties/[slug]/page.tsx.repairbak.20251207090327` (not compiled; it imported the removed JSON file), was removed in a second hygiene pass the same day | **Implemented and Verified** — `npm run lint` clean; `npm run build` passes (route count 25 → 24, `/api/properties` absent from the route table); on the local production build `/api/properties` returns 404 (with and without a query string), `/properties` and `/properties/lodha-world-towers-lower-parel` return 200, the homepage and `/properties` render the live Lodha listing, `/projects` returns 308 to `/properties`, and `sitemap.xml` lists only the live slug. No production data, Supabase table or Storage bucket was changed | Direct owner instruction, 2026-09-19. The residual gap in F17 was identified by an independent audit |
 
 | **P1 — lead source and response tracking**: four nullable columns added to `public.leads` (`lead_source` with an allowlist CHECK, `assigned_at`, `contacted_at`, `next_action_at`), plus two triggers — `leads_assignment_timestamp` (makes `assigned_at` trigger-owned and underivable from a request body) and `leads_broker_column_guard` (closes finding **R1** by restricting an authenticated non-admin caller to `status`, `contacted_at`, `next_action_at`; RLS is row-level and cannot restrict columns). `/api/leads` stamps `lead_source = 'website'` server-side and ignores any client-supplied value; off-platform channels are recorded at admin manual entry. The seven lead stages are unchanged, no column was dropped or renamed, no RLS policy was modified, and no existing row was backfilled — all 17 pre-existing leads read `lead_source = NULL`, meaning "not recorded" | **Code Implemented — MIGRATION NOT YET APPLIED.** `npm run lint` clean; `npm run build` passes (route count unchanged at 30). Live check on 2026-09-29 confirmed all four columns return PostgreSQL `42703` (undefined column), so the migration is pending and **must be applied before the next deployment** — the code at HEAD already selects these columns. No behavioural test of assignment, contact or follow-up has been run, because it cannot be until the migration is applied | Direct owner instruction, 2026-09-29, following the 2026-09-29 master audit. Migration authored by the assistant; the owner applies it, as with the `deals`, AUD-01 and R2 changes above |
+
+| **Phase 1 follow-up automation**: one Vercel Cron (`vercel.json`, 02:30 UTC = 08:00 IST) → `GET /api/jobs/daily`, gated by `CRON_SECRET` and failing closed. Covers the first-contact SLA reminder, `next_action_at` due-today reminder, overdue alert and founder digest; plus two inline sends — a broker notification when a lead is assigned, and a one-time customer acknowledgement on enquiry. All sends route through `lib/notifications/send.ts`, which never throws, so no email outcome can fail a database write. The daily job is **read-only against `leads`/`site_visits`** and state-derived, with no queue and no de-duplication table. Due/overdue compare the **Asia/Kolkata calendar date** via `istDateKey()`, never raw UTC. Recipients resolve from `profiles` + `auth.users` and exclude suspended/rejected/pending/soft-deleted accounts. **No migration, no RLS change, no trigger change, no lead-stage change, no lead mutation** | **Implemented, code-level — not yet deployed.** `npm run lint` clean; `npm run build` passes (32 → 33 routes). Verified locally: 401 on missing/wrong/malformed auth with an identical bare body; 200 on correct secret with correct IST date and counts; email failure isolation proven by running the job with `RESEND_API_KEY` empty (HTTP 200, `founderEmailSent: false`); 18/18 timezone boundary assertions pass. Live email delivery and the authenticated assignment matrix require a browser session and deployment | Direct owner instruction, 2026-10-02, after an architecture analysis that explicitly rejected n8n/Make/Zapier/Inngest/Trigger.dev at this stage — see "Automation platform decision" in §3 |
 
 _(Rows above the 2026-08-16 entries predate this file's dating convention and are not retroactively dated — do not invent dates for them.)_
 
