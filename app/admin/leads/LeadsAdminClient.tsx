@@ -29,6 +29,17 @@ type Lead = {
 type Broker = { id: string; full_name: string | null };
 type PropertyOption = { id: string; title: string };
 type Note = { id: string; note: string; author_id: string; created_at: string };
+type SiteVisit = {
+  id: string;
+  lead_id: string;
+  property_id: string;
+  broker_id: string;
+  visit_date: string;
+  notes: string | null;
+  created_at: string;
+};
+
+const EMPTY_VISIT_DRAFT = { property_id: "", visit_date: "", notes: "" };
 
 const STAGES: { value: string; label: string }[] = [
   { value: "new", label: "New" },
@@ -73,6 +84,14 @@ export default function LeadsAdminClient({
   const [notesByLead, setNotesByLead] = useState<Record<string, Note[]>>({});
   const [noteDraft, setNoteDraft] = useState("");
   const [savingNote, setSavingNote] = useState(false);
+  // Site visits mirror the notes panel exactly: its own expanded row, its own
+  // lazily-fetched cache, its own draft. Kept separate from `expandedId` so
+  // opening visits does not close notes and vice versa.
+  const [visitsExpandedId, setVisitsExpandedId] = useState<string | null>(null);
+  const [visitsByLead, setVisitsByLead] = useState<Record<string, SiteVisit[]>>({});
+  const [visitDraft, setVisitDraft] = useState(EMPTY_VISIT_DRAFT);
+  const [savingVisit, setSavingVisit] = useState(false);
+  const [visitError, setVisitError] = useState("");
   const [saveError, setSaveError] = useState("");
   const [view, setView] = useState<"active" | "archived">("active");
   const [confirmArchiveId, setConfirmArchiveId] = useState<string | null>(null);
@@ -261,6 +280,81 @@ export default function LeadsAdminClient({
       if (res.ok) {
         setNotesByLead((prev) => ({ ...prev, [leadId]: data.notes ?? [] }));
       }
+    }
+  }
+
+  // Resolves a property id to its title using the list this component already
+  // receives. The API returns property_id rather than an embedded
+  // properties(title), because the hand-written Database type declares
+  // `Relationships: []` and PostgREST embed inference collapses to `never`.
+  function propertyTitle(propertyId: string): string {
+    return properties.find((p) => p.id === propertyId)?.title ?? "Unknown property";
+  }
+
+  async function toggleSiteVisits(leadId: string) {
+    if (visitsExpandedId === leadId) {
+      setVisitsExpandedId(null);
+      return;
+    }
+    setVisitsExpandedId(leadId);
+    setVisitError("");
+    setVisitDraft(EMPTY_VISIT_DRAFT);
+    if (!visitsByLead[leadId]) {
+      const res = await fetch(`/api/admin/site-visits?lead_id=${encodeURIComponent(leadId)}`);
+      const data = await res.json();
+      if (res.ok) {
+        setVisitsByLead((prev) => ({ ...prev, [leadId]: data.siteVisits ?? [] }));
+      } else {
+        setVisitError("Could not load site visits.");
+      }
+    }
+  }
+
+  // Server-confirmed, not optimistic: a site visit is immutable once written
+  // (site_visits has no UPDATE or DELETE policy for any role), so showing one
+  // that the database rejected would be showing history that does not exist
+  // and cannot be undone. The list only changes after a 2xx.
+  async function handleAddSiteVisit(leadId: string) {
+    if (!visitDraft.property_id || !visitDraft.visit_date) {
+      setVisitError("Property and visit date are both required.");
+      return;
+    }
+
+    setSavingVisit(true);
+    setVisitError("");
+    try {
+      const res = await fetch("/api/admin/site-visits", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          lead_id: leadId,
+          property_id: visitDraft.property_id,
+          // Sent as the browser's local datetime string; the server parses it
+          // and stores the normalised ISO value. broker_id is NOT sent — the
+          // route derives it from the session.
+          visit_date: visitDraft.visit_date,
+          notes: visitDraft.notes,
+        }),
+      });
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        setVisitError(data?.error || "Could not record this site visit.");
+        return;
+      }
+
+      const refreshed = await fetch(
+        `/api/admin/site-visits?lead_id=${encodeURIComponent(leadId)}`
+      );
+      const refreshedData = await refreshed.json();
+      if (refreshed.ok) {
+        setVisitsByLead((prev) => ({ ...prev, [leadId]: refreshedData.siteVisits ?? [] }));
+      }
+      setVisitDraft(EMPTY_VISIT_DRAFT);
+    } catch {
+      setVisitError("Could not record this site visit.");
+    } finally {
+      setSavingVisit(false);
     }
   }
 
@@ -502,6 +596,13 @@ export default function LeadsAdminClient({
                     {expandedId === l.id ? "Hide Notes" : "Notes"}
                   </button>
 
+                  <button
+                    onClick={() => toggleSiteVisits(l.id)}
+                    className="text-xs uppercase tracking-[0.15em] font-light text-brand-gold hover:text-brand-gold/70 transition-colors"
+                  >
+                    {visitsExpandedId === l.id ? "Hide Visits" : "Site Visits"}
+                  </button>
+
                   {/* Archive / Restore with an inline confirm step, matching
                       the pattern already used for property soft-delete. */}
                   {view === "active" ? (
@@ -639,6 +740,81 @@ export default function LeadsAdminClient({
                   />
                 </span>
               </div>
+
+              {/* Site visits. Append-only: recorded visits are listed, never
+                  edited or removed, because the table grants no UPDATE or
+                  DELETE to any role. */}
+              {visitsExpandedId === l.id && (
+                <div className="mt-5 pl-0 md:pl-4 border-l-0 md:border-l border-brand-border">
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-brand-muted mb-3">
+                    Site Visits
+                  </p>
+
+                  <div className="space-y-3 mb-5">
+                    {(visitsByLead[l.id] ?? []).length === 0 ? (
+                      <p className="text-xs font-light text-brand-muted">
+                        No site visits recorded.
+                      </p>
+                    ) : (
+                      visitsByLead[l.id].map((v) => (
+                        <div key={v.id} className="text-xs font-light">
+                          <p className="text-brand-black">
+                            {propertyTitle(v.property_id)}
+                          </p>
+                          <p className="text-brand-muted mt-0.5">
+                            {formatDateTime(v.visit_date)}
+                          </p>
+                          {v.notes && (
+                            <p className="text-brand-black mt-1 leading-relaxed">{v.notes}</p>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <select
+                      value={visitDraft.property_id}
+                      onChange={(e) =>
+                        setVisitDraft((p) => ({ ...p, property_id: e.target.value }))
+                      }
+                      className="input-light text-sm sm:max-w-[220px]"
+                    >
+                      <option value="">Property visited</option>
+                      {properties.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.title}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="datetime-local"
+                      value={visitDraft.visit_date}
+                      onChange={(e) =>
+                        setVisitDraft((p) => ({ ...p, visit_date: e.target.value }))
+                      }
+                      className="input-light text-sm sm:max-w-[200px]"
+                    />
+                    <input
+                      value={visitDraft.notes}
+                      onChange={(e) => setVisitDraft((p) => ({ ...p, notes: e.target.value }))}
+                      placeholder="Visit notes (optional)"
+                      className="input-light text-sm flex-1"
+                    />
+                    <button
+                      onClick={() => handleAddSiteVisit(l.id)}
+                      disabled={savingVisit}
+                      className="text-xs uppercase tracking-[0.15em] font-light text-brand-gold hover:text-brand-gold/70 transition-colors whitespace-nowrap disabled:opacity-50"
+                    >
+                      {savingVisit ? "Saving…" : "Record Visit"}
+                    </button>
+                  </div>
+
+                  {visitError && (
+                    <p className="mt-3 text-xs font-light text-red-700/80">{visitError}</p>
+                  )}
+                </div>
+              )}
 
               {expandedId === l.id && (
                 <div className="mt-5 pl-0 md:pl-4 border-l-0 md:border-l border-brand-border">
