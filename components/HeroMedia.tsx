@@ -31,7 +31,17 @@ export default function HeroMedia({ type, src, alt = "", poster, playbackRate }:
         muted
         loop
         playsInline
-        preload="auto"
+        // "metadata", not "auto": the source file is ~24.4 MB and is served
+        // with Cache-Control: max-age=0, must-revalidate, so preload="auto"
+        // began fetching the whole asset on every homepage visit — including
+        // on mobile data, where it is the single worst thing about the page.
+        // "metadata" fetches only enough to know duration/dimensions; the
+        // poster still paints immediately, so the visual design is unchanged.
+        //
+        // This is the cheap half of the fix. The file itself still needs
+        // re-encoding to roughly 4 MB or less; no encoder is available in this
+        // repository, so that remains outstanding.
+        preload="metadata"
         aria-hidden="true"
       />
     );

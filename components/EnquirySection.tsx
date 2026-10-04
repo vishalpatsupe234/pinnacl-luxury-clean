@@ -72,23 +72,40 @@ export default function EnquirySection() {
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-8">
+              <label htmlFor="home-enquiry-name" className="sr-only">
+                Your name
+              </label>
               <input
                 required
+                id="home-enquiry-name"
+                name="name"
+                autoComplete="name"
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Your Name"
                 className="input-minimal"
               />
+              <label htmlFor="home-enquiry-phone" className="sr-only">
+                Phone number
+              </label>
               <input
                 required
+                id="home-enquiry-phone"
+                name="tel"
+                autoComplete="tel"
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="Phone Number"
                 className="input-minimal"
               />
+              <label htmlFor="home-enquiry-message" className="sr-only">
+                What you are looking for
+              </label>
               <textarea
+                id="home-enquiry-message"
+                name="message"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder="Tell us what you're looking for"

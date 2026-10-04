@@ -110,38 +110,66 @@ export default function ContactPage() {
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-8">
+                  <label htmlFor="contact-name" className="sr-only">
+                    Your name
+                  </label>
                   <input
                     required
+                    id="contact-name"
+                    name="name"
+                    autoComplete="name"
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Your Name"
                     className="input-light"
                   />
+                  <label htmlFor="contact-email" className="sr-only">
+                    Email address
+                  </label>
                   <input
                     required
+                    id="contact-email"
+                    name="email"
+                    autoComplete="email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Email Address"
                     className="input-light"
                   />
+                  <label htmlFor="contact-phone" className="sr-only">
+                    Phone number
+                  </label>
                   <input
                     required
+                    id="contact-phone"
+                    name="tel"
+                    autoComplete="tel"
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="Phone Number"
                     className="input-light"
                   />
+                  <label htmlFor="contact-location" className="sr-only">
+                    Preferred location
+                  </label>
                   <input
+                    id="contact-location"
+                    name="location"
                     type="text"
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
                     placeholder="Preferred Location"
                     className="input-light"
                   />
+                  <label htmlFor="contact-message" className="sr-only">
+                    Your requirements
+                  </label>
                   <textarea
+                    id="contact-message"
+                    name="message"
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     placeholder="Tell us about your requirements"

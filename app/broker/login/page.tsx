@@ -60,16 +60,33 @@ export default function BrokerLoginPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-8">
+          {/* Labels are sr-only so the minimal visual design is unchanged.
+              `id`, `name` and `autoComplete` matter more here than on the
+              public forms: without them a password manager cannot reliably
+              identify this as a login form, so it will not offer to save or
+              fill the credential — which affects the team every day. */}
+          <label htmlFor="broker-login-email" className="sr-only">
+            Email address
+          </label>
           <input
             required
+            id="broker-login-email"
+            name="username"
+            autoComplete="username"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Email Address"
             className="input-light"
           />
+          <label htmlFor="broker-login-password" className="sr-only">
+            Password
+          </label>
           <input
             required
+            id="broker-login-password"
+            name="password"
+            autoComplete="current-password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
