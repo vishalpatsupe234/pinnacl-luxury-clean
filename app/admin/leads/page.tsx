@@ -10,8 +10,17 @@ export default async function AdminLeadsPage() {
   if (!user) {
     redirect("/broker/login");
   }
+  // Authenticated but not an admin: send them to their own area, NOT to the
+  // login page. Previously this also redirected to /broker/login, which made
+  // "you are not signed in" and "you are signed in but not permitted"
+  // indistinguishable — a signed-in broker was shown a login form and
+  // reasonably concluded their session had expired.
+  //
+  // A null profile also lands on /broker/dashboard, whose own guard then sends
+  // it to /broker/login. That is two hops and terminates; it cannot loop,
+  // because the dashboard never redirects back into /admin/*.
   if (!profile || profile.role !== "super_admin") {
-    redirect("/broker/login");
+    redirect("/broker/dashboard");
   }
 
   const supabase = await createClient();

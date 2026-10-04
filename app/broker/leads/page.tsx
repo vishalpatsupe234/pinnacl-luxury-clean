@@ -10,6 +10,16 @@ export default async function BrokerLeadsPage() {
   if (!user) {
     redirect("/broker/login");
   }
+  // An authenticated super_admin belongs in the admin area, not at a login
+  // page. Checked BEFORE the broker-role rejection below, which would
+  // otherwise catch them — the mirror image of the admin-side defect.
+  //
+  // /admin/brokers accepts super_admin, so this terminates in one hop and
+  // cannot loop.
+  if (profile?.role === "super_admin") {
+    redirect("/admin/brokers");
+  }
+
   if (!profile || (profile.role !== "verified_broker" && profile.role !== "sales_partner")) {
     redirect("/broker/login");
   }
